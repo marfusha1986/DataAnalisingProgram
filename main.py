@@ -9,7 +9,7 @@ class DataAnaliseApp:
 
     def __init__(self,window):
         self.window = window
-        self.window.geometry('500x450')
+        self.window.geometry('800x750')
         self.window.title('Data Analising Program')
 
         self.df=None
@@ -17,6 +17,36 @@ class DataAnaliseApp:
     #Dosya yukleme Butonu
         self.button_upload = tk.Button(window, text='Veri Seti Yükle', command=self.file_upload)
         self.button_upload.pack(pady=5)
+
+        self.lbl_types = tk.Label(self.window, text='Sütun Türleri: ')
+        self.lbl_types.pack()
+
+        self.list_types = tk.Listbox(self.window, height=6)
+        self.list_types.pack(pady=5)
+
+        self.button_null = tk.Button(self.window, text='Eksik Değer Analizi',command=self.null_analises)
+        self.button_null.pack(pady=5)
+
+        self.lbl_fill = tk.Label(self.window,text='Eksik Değer Doldurma: ')
+        self.lbl_fill.pack()
+
+        #Kolon seçimi
+        self.combo_fill_col = ttk.Combobox(self.window)
+        self.combo_fill_col.pack(pady=3)
+
+        #Doldurma Türü seçimi
+        self.combo_fill_type =ttk.Combobox(self.window)
+        self.combo_fill_type['values'] = ['mean','median','mode']
+        self.combo_fill_type.set('mean') #Varsayılan
+        self.combo_fill_type.pack()
+
+        #Doldurma butonu
+        self.button_fill =tk.Button(self.window,text='Eksik Değer Doldur',command=self.fill_nulls)
+        self.button_fill.pack(pady=5)
+
+        #Korelasyon matrisi butonu
+        self.button_corr=tk.Button(self.window,text='Korelasyon Matrisi (Heatmap)',command=self.show_corr)
+        self.button_corr.pack(pady=5)
 
         # X ekseni için
         self.lbl_x = tk.Label(self.window, text='X Ekseni Seçin: ')
@@ -34,6 +64,8 @@ class DataAnaliseApp:
         self.lbl_tur = tk.Label(self.window,text='Grafik Türü Seçin: ')
         self.lbl_tur.pack()
         self.combo_tur = ttk.Combobox(self.window)
+
+
 
         #Kullanıcıya Seçenek Sunalım
         self.combo_tur['values'] = [
@@ -61,9 +93,68 @@ class DataAnaliseApp:
 
             self.combo_x['values']=columns
             self.combo_y['values']=columns
+            self.combo_fill_col['values']=columns
             print('Veri başarıyla yüklşendi,sütunlar kutulara doldu!')
 
-            print(self.df.head(10))
+            self.df = self.df.loc[:, ~self.df.columns.str.contains('^Unnamed')]
+
+        print(self.df.head(10))
+        self.list_types.delete(0,tk.END)
+        for col,dtype in self.df.dtypes.items():
+            self.list_types.insert(tk.END,f'{col}  ---> {dtype}')
+
+    def null_analises(self):
+        if self.df is None:
+            print('Lütfen önce veri yükleyin!')
+            return
+
+        nulls =self.df.isnull().sum()
+
+        print('\n --- Eksik Değer Analizi ---')
+        for col,count in nulls.items():
+            print(f'{col}: {count} adet eksik değer')
+        print('---------------------------------------------')
+
+
+    def fill_nulls(self):
+        if self.df is None:
+            print('Lütfen önce veri yükleyin!')
+            return
+
+        col = self.combo_fill_col.get()
+        method = self.combo_fill_type.get()
+
+        if col =='':
+            print('Lütfen bir kolon seçin!')
+            return
+
+        if method == 'mean':
+            value = self.df[col].mean()
+        elif method == 'median':
+            value = self.df[col].median()
+        elif method == 'mode':
+            value = self.df[col].mode()[0]
+
+        #Doldurma işlemi:
+        self.df[col] = self.df[col].fillna(value)
+        print(f"{col} kolonundaki eksik değerler '{method}' yöntemiyle dolduruldu.")
+
+    def show_corr(self):
+        if self.df is None:
+            print('Lütfen önce veri yükleyin!')
+            return
+
+        #Sadece sayısal kolonları al
+        numeric_df = self.df.select_dtypes(include=['float64','int64'])
+
+        #Korelasyon matrisi
+        corr = numeric_df.corr()
+
+        #Heatmap çizimi
+        plt.figure(figsize=(12,8))
+        sns.heatmap(corr,annot=False,cmap='coolwarm')
+        plt.title('Korelasyon Matrisi Heatmap')
+        plt.show()
 
     def graphic(self):
         if self.df is None:
