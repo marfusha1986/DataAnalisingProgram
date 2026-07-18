@@ -2,210 +2,221 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import tkinter as tk
-from tkinter import filedialog,ttk
+from tkinter import filedialog, ttk, simpledialog
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
 
 
-class DataAnaliseApp:
+class DataAnalyseLogic:
+    def __init__(self):
+        self.df = None
+        self.model = None
 
-    def __init__(self,window):
-        self.window = window
-        self.window.geometry('800x750')
-        self.window.title('Data Analising Program')
+    def load_data(self, file_path):
+        self.df = pd.read_csv(file_path)
+        # Unnamed kolonları temizle
+        self.df = self.df.loc[:, ~self.df.columns.str.contains('^Unnamed')]
+        self.df = self.df.convert_dtypes()
+        return list(self.df.columns)
 
-        self.df=None
+    def train(self, target, features):
+        X = self.df[features]
+        y = self.df[target]
 
-    #Dosya yukleme Butonu
-        self.button_upload = tk.Button(window, text='Veri Seti Yükle', command=self.file_upload)
-        self.button_upload.pack(pady=5)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        self.model = RandomForestClassifier(n_estimators=200)
+        self.model.fit(X_train, y_train)
+        return self.model.score(X_test, y_test)
 
-        self.lbl_types = tk.Label(self.window, text='Sütun Türleri: ')
+    def predict(self, row_index, features):
+        row = self.df.iloc[row_index]
+        X_row = pd.DataFrame([row[features].values],columns=features)
+        return self.model.predict(X_row)[0]
+
+    def null_analysis(self):
+        if self.df is None:
+            print("Lütfen önce veri yükleyin!")
+            return
+
+        nulls = self.df.isnull().sum()
+        print("\n--- Eksik Değer Analizi ---")
+        for col, count in nulls.items():
+            print(f"{col}: {count} adet eksik değer")
+        print("---------------------------------------")
+
+    def show_corr(self):
+        if self.df is None:
+            print("Lütfen önce veri yükleyin!")
+            return
+
+        numeric_df = self.df.select_dtypes(include=['float64', 'int64'])
+        corr = numeric_df.corr()
+
+        plt.figure(figsize=(12, 8))
+        sns.heatmap(corr, annot=False, cmap='coolwarm')
+        plt.title('Korelasyon Matrisi Heatmap')
+        plt.show()
+
+
+class DataAnalyseGUI:
+    def __init__(self, root):
+        self.window = root
+        self.window.geometry("800x750")
+        self.window.title("Data Analysing Program")
+
+        self.logic = DataAnalyseLogic()
+
+        # VERİ YÜKLEME
+        self.button_upload = tk.Button(self.window, text='Veri Seti Yükle', command=self.file_upload)
+        self.button_upload.pack(pady=10)
+
+        # SÜTUN TİPLERİ
+        self.lbl_types = tk.Label(self.window, text='Sütun Türleri:')
         self.lbl_types.pack()
-
         self.list_types = tk.Listbox(self.window, height=6)
         self.list_types.pack(pady=5)
 
-        self.button_null = tk.Button(self.window, text='Eksik Değer Analizi',command=self.null_analises)
-        self.button_null.pack(pady=5)
+        # EKSİK DEĞER ANALİZİ
+        self.button_null = tk.Button(self.window, text='Eksik Değer Analizi', command=self.null_analysis_gui)
+        self.button_null.pack(pady=10)
 
-        self.lbl_fill = tk.Label(self.window,text='Eksik Değer Doldurma: ')
+        # EKSİK DEĞER DOLDURMA
+        self.lbl_fill = tk.Label(self.window, text='Eksik Değer Doldurma:')
         self.lbl_fill.pack()
 
-        #Kolon seçimi
         self.combo_fill_col = ttk.Combobox(self.window)
         self.combo_fill_col.pack(pady=3)
 
-        #Doldurma Türü seçimi
-        self.combo_fill_type =ttk.Combobox(self.window)
-        self.combo_fill_type['values'] = ['mean','median','mode']
-        self.combo_fill_type.set('mean') #Varsayılan
+        self.combo_fill_type = ttk.Combobox(self.window, values=['mean', 'median', 'mode'])
+        self.combo_fill_type.set('mean')
         self.combo_fill_type.pack()
 
-        #Doldurma butonu
-        self.button_fill =tk.Button(self.window,text='Eksik Değer Doldur',command=self.fill_nulls)
-        self.button_fill.pack(pady=5)
+        self.button_fill = tk.Button(self.window, text='Eksik Değer Doldur', command=self.fill_nulls_gui)
+        self.button_fill.pack(pady=10)
 
-        #Korelasyon matrisi butonu
-        self.button_corr=tk.Button(self.window,text='Korelasyon Matrisi (Heatmap)',command=self.show_corr)
-        self.button_corr.pack(pady=5)
+        # KORELASYON MATRİSİ
+        self.button_corr = tk.Button(self.window, text='Korelasyon Matrisi (Heatmap)', command=self.show_corr_gui)
+        self.button_corr.pack(pady=10)
 
-        # X ekseni için
-        self.lbl_x = tk.Label(self.window, text='X Ekseni Seçin: ')
-        self.lbl_x.pack()
-        self.combo_x = ttk.Combobox(self.window)
-        self.combo_x.pack()
+        # HEDEF KOLON
+        self.lbl_target = tk.Label(self.window, text='Hedef Kolon (Label):')
+        self.lbl_target.pack()
+        self.combo_target = ttk.Combobox(self.window)
+        self.combo_target.pack(pady=3)
 
-        # Y ekseni için
-        self.lbl_y = tk.Label(self.window, text='Y Ekseni Seçin: ')
-        self.lbl_y.pack()
-        self.combo_y = ttk.Combobox(self.window)
-        self.combo_y.pack()
+        # ÖZELLİK KOLONLARI
+        self.lbl_features = tk.Label(self.window, text='Özellik Kolonları (Features):')
+        self.lbl_features.pack()
+        self.list_features = tk.Listbox(self.window, selectmode='multiple', height=10)
+        self.list_features.pack(pady=3)
 
-#Grafik Türü Seçimi
-        self.lbl_tur = tk.Label(self.window,text='Grafik Türü Seçin: ')
-        self.lbl_tur.pack()
-        self.combo_tur = ttk.Combobox(self.window)
+        # MODEL EĞİTME
+        self.button_train = tk.Button(self.window, text='Modeli Eğit', command=self.train_model)
+        self.button_train.pack(pady=10)
 
+        # TAHMİN
+        self.button_predict = tk.Button(self.window, text='Tahmin Yap', command=self.predict_row)
+        self.button_predict.pack(pady=10)
 
-
-        #Kullanıcıya Seçenek Sunalım
-        self.combo_tur['values'] = [
-            'Saçılım Grafiği (Scatter)',
-            'Çizgi Grafiği (Line)',
-            'Kutu Grafiği (Boxplot)'
-        ]
-        self.combo_tur.set('Saçılım Grafiği (Scatter)') #Varsayılan seçim
-        self.combo_tur.pack()
-        #============================================
-
-        #Grafik çizme butonu
-        self.button_graphic = tk.Button(self.window, text='Grafik çiz', command=self.graphic)
-        self.button_graphic.pack(pady=10)
-
+        self.lbl_score = tk.Label(self.window,text="Henüz model eğitilmedi!")
+        self.lbl_score.pack()
 
     def file_upload(self):
-        file_path = filedialog.askopenfilename(
-            filetypes=[('CSV Files', '*.csv')]
-        )
-
-        if file_path:
-            self.df = pd.read_csv(file_path)
-            columns = list(self.df.columns)
-
-            self.combo_x['values']=columns
-            self.combo_y['values']=columns
-            self.combo_fill_col['values']=columns
-            print('Veri başarıyla yüklşendi,sütunlar kutulara doldu!')
-
-            self.df = self.df.loc[:, ~self.df.columns.str.contains('^Unnamed')]
-
-        print(self.df.head(10))
-        self.list_types.delete(0,tk.END)
-        for col,dtype in self.df.dtypes.items():
-            self.list_types.insert(tk.END,f'{col}  ---> {dtype}')
-
-    def null_analises(self):
-        if self.df is None:
-            print('Lütfen önce veri yükleyin!')
+        file_path = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
+        if not file_path:
             return
 
-        nulls =self.df.isnull().sum()
+        columns = self.logic.load_data(file_path)
+        # Target sadece kategorik kolonlar
+        categorical_cols = self.logic.df.select_dtypes(include=['object','string']).columns
+        self.combo_target['values'] = list(categorical_cols)
 
-        print('\n --- Eksik Değer Analizi ---')
-        for col,count in nulls.items():
-            print(f'{col}: {count} adet eksik değer')
-        print('---------------------------------------------')
+        # Feature listesine sadece sayısal kolonlar
+        numeric_cols = self.logic.df.select_dtypes(include=['float64', 'int64']).columns
+        self.list_features.delete(0, tk.END)
+        for col in numeric_cols:
+            self.list_features.insert(tk.END, col)
 
+        # Eksik değer doldurma kolonları
+        self.combo_fill_col['values'] = columns
 
-    def fill_nulls(self):
-        if self.df is None:
-            print('Lütfen önce veri yükleyin!')
+        # Sütun tipleri
+        self.list_types.delete(0, tk.END)
+        for col, dtype in self.logic.df.dtypes.items():
+            self.list_types.insert(tk.END, f"{col} ---> {dtype}")
+
+        print("Veri başarıyla yüklendi, sütunlar kutulara doldu!")
+
+    def train_model(self):
+        target = self.combo_target.get()
+        if target == "":
+            print("Lütfen hedef kolon seçin!")
+            return
+
+        features = [self.list_features.get(i) for i in self.list_features.curselection()]
+        if not features:
+            print("Lütfen en az bir özellik kolon seçin!")
+            return
+
+        accuracy = self.logic.train(target, features)
+        self.lbl_score.config(text=f"Model Başarı Oranı: {accuracy:.2f}")
+        print(f"Model Başarı oranı: {accuracy:.2f}")
+    def predict_row(self):
+        if self.logic.model is None:
+            print("Lütfen önce modeli eğitin!")
+            return
+        try:
+            row_index = simpledialog.askinteger("Satır seç", "Tahmin yapılacak satır:")
+            if row_index is None:
+                return
+
+            if row_index < 0 or row_index >= len(self.logic.df):
+                print("Geçersiz satır numarası!")
+                return
+
+            features = [self.list_features.get(i) for i in self.list_features.curselection()]
+            if not features:
+                print("Lütfen en az bir özellik kolon seçin!")
+                return
+
+            prediction = self.logic.predict(row_index, features)
+            print("Tahmin: ", prediction)
+
+        except Exception as e:
+            print("Tahmin sırasında hata oluştu: ",e)
+
+    def null_analysis_gui(self):
+        self.logic.null_analysis()
+
+    def show_corr_gui(self):
+        self.logic.show_corr()
+
+    def fill_nulls_gui(self):
+        if self.logic.df is None:
+            print("Lütfen önce veri yükleyin!")
             return
 
         col = self.combo_fill_col.get()
         method = self.combo_fill_type.get()
 
-        if col =='':
-            print('Lütfen bir kolon seçin!')
+        if col == "":
+            print("Lütfen bir kolon seçin!")
             return
 
-        if method == 'mean':
-            value = self.df[col].mean()
-        elif method == 'median':
-            value = self.df[col].median()
-        elif method == 'mode':
-            value = self.df[col].mode()[0]
-
-        #Doldurma işlemi:
-        self.df[col] = self.df[col].fillna(value)
-        print(f"{col} kolonundaki eksik değerler '{method}' yöntemiyle dolduruldu.")
-
-    def show_corr(self):
-        if self.df is None:
-            print('Lütfen önce veri yükleyin!')
-            return
-
-        #Sadece sayısal kolonları al
-        numeric_df = self.df.select_dtypes(include=['float64','int64'])
-
-        #Korelasyon matrisi
-        corr = numeric_df.corr()
-
-        #Heatmap çizimi
-        plt.figure(figsize=(12,8))
-        sns.heatmap(corr,annot=False,cmap='coolwarm')
-        plt.title('Korelasyon Matrisi Heatmap')
-        plt.show()
-
-    def graphic(self):
-        if self.df is None:
-            print('Lütfen önce bir veri seti yükleyin!')
-            return
-
-        chosen_x=self.combo_x.get()
-        chosen_y=self.combo_y.get()
-        chosen_tur = self.combo_tur.get()
-
-        if chosen_x != '' and chosen_y != '':
-            plt.figure(figsize=(8,5))
-
-            #Grafik türü kontrolu
-            if chosen_tur == 'Saçılım Grafiği (Scatter)':
-                sns.scatterplot(
-                    data=self.df,
-                    x=chosen_x,
-                    y=chosen_y,
-                    hue='diagnosis',
-                    palette='Set1',
-                    alpha=0.8)
-            elif chosen_tur == 'Çizgi Grafiği (Line)':
-                sns.lineplot(
-                    data=self.df,
-                    x=chosen_x,
-                    y=chosen_y,
-                    hue='diagnosis',
-                    palette='Set1',
-                    errorbar=None
-                )
-            elif chosen_tur == 'Kutu Grafiği (Boxplot)':
-                sns.boxplot(
-                    data=self.df,
-                    x=chosen_x,
-                    y=chosen_y,
-                    hue='diagnosis',
-                    palette='Set1'
-
-                )
-            #==========================================
-            plt.xlabel(chosen_x)
-            plt.ylabel(chosen_y)
-            plt.title(f'{chosen_tur} : {chosen_x} ve {chosen_y} İlişkisi')
-            plt.show()
+        if method == "mean":
+            value = self.logic.df[col].mean()
+        elif method == "median":
+            value = self.logic.df[col].median()
         else:
-            print('Lutfen grafiği çizdirmek için X ve Y eksenlerini seçip butona tekrar basın!')
+            value = self.logic.df[col].mode()[0]
+
+        self.logic.df[col] = self.logic.df[col].fillna(value)
+        print(f"{col} kolonundaki eksik değerler '{method}' ile dolduruldu.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     root = tk.Tk()
-    app = DataAnaliseApp(root)
+    app = DataAnalyseGUI(root)
     root.mainloop()
-
