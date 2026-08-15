@@ -20,11 +20,11 @@ def run_ai(prompt):
 
 if __name__ == "__main__":
     #GUI'de gelen uzun metni stdin'den alıyoruz
-    prompt = sys.stdin.read().strip()
+    prompt = sys.stdin.buffer.read().decode("utf-8",errors="ignore").strip()
 
     if not prompt:
         print("AI: Boş veri aldım,yorum yapamıyorum.")
-        sys.exit()
+        sys.exit(0)
 
     result = run_ai(prompt)
     print(result)

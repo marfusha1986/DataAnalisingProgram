@@ -1,5 +1,3 @@
-import tkinter
-
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -10,25 +8,1319 @@ from mpl_toolkits.mplot3d import Axes3D
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 import requests
 import subprocess
+import sys
 import threading
-
+from googletrans import Translator
 from sklearn.preprocessing import StandardScaler
 
 #---REFERANS ARALIKLAR TABLOSU----
-REFERANCE_RANGES = {
-    "sgpt": [(0,40,"normal"), (41,100,"hafif yüksek"), (101,300,"orta yüksek"), (300,9999,"ciddi yüksek")],
-    "sgot": [(0,40,"normal"), (41,100,"hafif yüksek"), (101,300,"orta yüksek"), (300,9999,"ciddi yüksek")],
-    "crp": [(0,5,"normal"), (6,20,"hafif yüksek"), (21,50,"orta yüksek"), (50,9999,"ciddi yüksek")],
-    "albumin": [(3.5,5.5,"normal"), (0,3.49,"düşük")],
-    "tot_bilirubin": [(0,1.2,"normal"), (1.3,3,"hafif yüksek"), (3,9999,"yüksek")],
-    "direct_bilirubin": [(0,0.3,"normal"), (0.4,1,"hafif yüksek"), (1,9999,"yüksek")],
-    "alkphos": [(40,130,"normal"), (131,300,"hafif yüksek"), (300,9999,"yüksek")],
-    "tot_proteins": [(6.0,8.3,"normal"), (0,5.99,"düşük"), (8.31,9999,"yüksek")],
-    "ag_ratio": [(1.0,2.2,"normal"), (0,0.99,"düşük"), (2.21,9999,"yüksek")]
+
+REFERENCE_RANGES = {
+    "internal_medicine": {
+        # Karaciğer Fonksiyonları
+        "sgpt": [(0,40,"normal"), (41,100,"hafif yüksek"), (101,300,"orta yüksek"), (300,9999,"ciddi yüksek")],
+        "sgot": [(0,40,"normal"), (41,100,"hafif yüksek"), (101,300,"orta yüksek"), (300,9999,"ciddi yüksek")],
+        "alkphos": [(40,130,"normal"), (131,300,"hafif yüksek"), (300,9999,"yüksek")],
+        "tot_bilirubin": [(0,1.2,"normal"), (1.3,3,"hafif yüksek"), (3,9999,"yüksek")],
+        "direct_bilirubin": [(0,0.3,"normal"), (0.4,1,"hafif yüksek"), (1,9999,"yüksek")],
+        "albumin": [(3.5,5.5,"normal"), (0,3.49,"düşük")],
+        "tot_proteins": [(6.0,8.3,"normal"), (0,5.99,"düşük"), (8.31,9999,"yüksek")],
+        "ag_ratio": [(1.0,2.2,"normal"), (0,0.99,"düşük"), (2.21,9999,"yüksek")],
+
+        # Böbrek Fonksiyonları
+        "urea": [(10,50,"normal"), (51,100,"hafif yüksek"), (101,9999,"yüksek")],
+        "creatinine": [(0.6,1.3,"normal"), (1.4,2.0,"hafif yüksek"), (2.1,9999,"yüksek")],
+        "gfr": [(90,9999,"normal"), (60,89,"hafif düşük"), (30,59,"orta düşük"), (0,29,"ciddi düşük")],
+
+        # Kan Şekeri ve Metabolizma
+        "glucose": [(70,99,"normal"), (100,125,"prediyabet"), (126,9999,"diyabet")],
+        "hba1c": [(4.0,5.6,"normal"), (5.7,6.4,"prediyabet"), (6.5,9999,"diyabet")],
+        "insulin": [(2,25,"normal"), (26,9999,"yüksek")],
+        "homa_ir": [(0,2,"normal"), (2.1,2.9,"hafif yüksek"), (3,9999,"insülin direnci")],
+
+        # Elektrolitler
+        "sodium": [(135,145,"normal"), (146,160,"yüksek"), (0,134,"düşük")],
+        "potassium": [(3.5,5.0,"normal"), (5.1,6.0,"hafif yüksek"), (6.1,9999,"ciddi yüksek")],
+        "chloride": [(98,106,"normal"), (107,120,"yüksek"), (0,97,"düşük")],
+        "calcium": [(8.5,10.5,"normal"), (10.6,12,"hafif yüksek"), (12.1,9999,"ciddi yüksek")],
+        "phosphorus": [(2.5,4.5,"normal"), (4.6,9999,"yüksek"), (0,2.4,"düşük")],
+        "magnesium": [(1.7,2.2,"normal"), (2.3,9999,"yüksek"), (0,1.6,"düşük")],
+
+        # Tiroid Fonksiyonları
+        "tsh": [(0.4,4.0,"normal"), (4.1,10,"hafif yüksek"), (10.1,9999,"ciddi yüksek")],
+        "ft4": [(0.8,1.8,"normal"), (0,0.79,"düşük"), (1.81,9999,"yüksek")],
+        "ft3": [(2.3,4.2,"normal"), (0,2.29,"düşük"), (4.21,9999,"yüksek")],
+
+        # Vitamin ve Mineral Paneli
+        "vitamin_d": [(30,100,"normal"), (20,29,"hafif düşük"), (0,19,"ciddi düşük")],
+        "b12": [(200,900,"normal"), (0,199,"düşük"), (901,9999,"yüksek")],
+        "folate": [(3,17,"normal"), (0,2.9,"düşük")],
+        "iron": [(60,170,"normal"), (0,59,"düşük"), (171,9999,"yüksek")],
+        "ferritin": [(30,400,"normal"), (0,29,"düşük"), (401,9999,"yüksek")],
+
+        # Lipid Paneli
+        "cholesterol_total": [(0,200,"normal"), (201,239,"hafif yüksek"), (240,9999,"yüksek")],
+        "ldl": [(0,100,"optimal"), (101,129,"iyi"), (130,159,"sınır yüksek"), (160,189,"yüksek"), (190,9999,"çok yüksek")],
+        "hdl": [(60,9999,"iyi"), (40,59,"orta"), (0,39,"düşük")],
+        "triglycerides": [(0,150,"normal"), (151,199,"hafif yüksek"), (200,499,"yüksek"), (500,9999,"çok yüksek")]
+    },
+    "cardiology":{
+    # Kalp Enzimleri
+        "troponin_i": [
+        (0, 0.04, "normal"),
+        (0.05, 0.39, "hafif yüksek"),
+        (0.40, 9999, "ciddi yüksek")
+        ],
+        "troponin_t": [
+        (0, 0.01, "normal"),
+        (0.02, 0.09, "hafif yüksek"),
+        (0.10, 9999, "ciddi yüksek")
+        ],
+        "ck_mb": [
+        (0, 5, "normal"),
+        (6, 24, "hafif yüksek"),
+        (25, 9999, "ciddi yüksek")
+        ],
+         "myoglobin": [
+        (0, 85, "normal"),
+        (86, 9999, "yüksek")
+        ],
+
+         # Kalp Yetmezliği Belirteçleri
+        "bnp": [
+        (0, 100, "normal"),
+        (101, 300, "hafif yüksek"),
+        (301, 9999, "ciddi yüksek")
+        ],
+        "nt_pro_bnp": [
+        (0, 125, "normal"),
+        (126, 450, "hafif yüksek"),
+        (451, 9999, "ciddi yüksek")
+        ],
+
+        # Pıhtılaşma ve Tromboz
+        "d_dimer": [
+        (0, 0.5, "normal"),
+        (0.51, 1.0, "hafif yüksek"),
+        (1.01, 9999, "ciddi yüksek")
+        ],
+
+        # Lipid Paneli (kardiyoloji için yeniden bağlanıyor)
+        "cholesterol_total": [
+        (0, 200, "normal"),
+        (201, 239, "hafif yüksek"),
+        (240, 9999, "yüksek")
+        ],
+        "ldl": [
+        (0, 100, "optimal"),
+        (101, 129, "iyi"),
+        (130, 159, "sınır yüksek"),
+        (160, 189, "yüksek"),
+        (190, 9999, "çok yüksek")
+        ],
+        "hdl": [
+        (60, 9999, "iyi"),
+        (40, 59, "orta"),
+        (0, 39, "düşük")
+        ],
+        "triglycerides": [
+        (0, 150, "normal"),
+        (151, 199, "hafif yüksek"),
+        (200, 499, "yüksek"),
+        (500, 9999, "çok yüksek")
+        ],
+
+         # Kas Enzimleri (kardiyak olmayan ama kardiyolojiye bağlı)
+        "ck_total": [
+        (0, 200, "normal"),
+        (201, 9999, "yüksek")
+        ]
+
+
+    },
+    "endocrinology":{
+
+     # Tiroid Fonksiyonları
+        "tsh": [
+        (0.4, 4.0, "normal"),
+        (4.1, 10, "hafif yüksek"),
+        (10.1, 9999, "ciddi yüksek")
+        ],
+        "ft4": [
+        (0.8, 1.8, "normal"),
+        (0, 0.79, "düşük"),
+        (1.81, 9999, "yüksek")
+        ],
+        "ft3": [
+        (2.3, 4.2, "normal"),
+        (0, 2.29, "düşük"),
+        (4.21, 9999, "yüksek")
+        ],
+
+        # Diyabet ve Metabolizma
+         "glucose_fasting": [
+        (70, 99, "normal"),
+        (100, 125, "prediyabet"),
+        (126, 9999, "diyabet")
+        ],
+        "glucose_pp": [
+        (70, 140, "normal"),
+        (141, 199, "prediyabet"),
+        (200, 9999, "diyabet")
+        ],
+        "hba1c": [
+        (4.0, 5.6, "normal"),
+        (5.7, 6.4, "prediyabet"),
+        (6.5, 9999, "diyabet")
+         ],
+        "insulin": [
+        (2, 25, "normal"),
+        (26, 9999, "yüksek")
+        ],
+        "homa_ir": [
+        (0, 2, "normal"),
+        (2.1, 2.9, "hafif yüksek"),
+        (3, 9999, "insülin direnci")
+        ],
+
+        # Adrenal Bez (Böbrek Üstü)
+        "cortisol_morning": [
+        (6, 23, "normal"),
+        (0, 5.9, "düşük"),
+        (24, 9999, "yüksek")
+        ],
+        "acth": [
+        (10, 60, "normal"),
+        (0, 9.9, "düşük"),
+        (61, 9999, "yüksek")
+        ],
+        "dhea_s": [
+        (35, 430, "normal"),
+        (0, 34, "düşük"),
+        (431, 9999, "yüksek")
+        ],
+
+        # Kadın Hormonları
+        "estradiol": [
+        (30, 400, "normal"),
+        (0, 29, "düşük"),
+        (401, 9999, "yüksek")
+        ],
+        "progesterone": [
+        (5, 20, "normal (luteal)"),
+        (0, 4.9, "düşük"),
+        (21, 9999, "yüksek")
+        ],
+        "fsh": [
+        (3, 10, "normal"),
+        (11, 20, "hafif yüksek"),
+        (21, 9999, "ciddi yüksek")
+        ],
+        "lh": [
+        (2, 12, "normal"),
+        (13, 9999, "yüksek")
+        ],
+
+        # Erkek Hormonları
+        "testosterone_total": [
+        (300, 1000, "normal"),
+        (0, 299, "düşük"),
+        (1001, 9999, "yüksek")
+        ],
+        "testosterone_free": [
+        (5, 25, "normal"),
+        (0, 4.9, "düşük"),
+        (26, 9999, "yüksek")
+        ],
+
+         # Prolaktin
+        "prolactin": [
+        (4, 15, "normal"),
+        (16, 25, "hafif yüksek"),
+        (26, 9999, "ciddi yüksek")
+         ]
+
+
+    },
+
+    "hematology":{
+
+        # Beyaz Kan Hücreleri (Enfeksiyon / Lösemi)
+        "wbc": [
+        (4.0, 11.0, "normal"),
+        (11.1, 15.0, "hafif yüksek"),
+        (15.1, 9999, "ciddi yüksek"),
+        (0, 3.9, "düşük")
+        ],
+
+        # Kırmızı Kan Hücreleri
+        "rbc": [
+        (4.5, 6.0, "normal"),
+        (0, 4.49, "düşük"),
+        (6.01, 9999, "yüksek")
+        ],
+
+        # Hemoglobin
+        "hgb": [
+        (13.5, 17.5, "normal"),
+        (0, 13.49, "düşük"),
+        (17.6, 9999, "yüksek")
+        ],
+
+        # Hematokrit
+        "hct": [
+        (38, 50, "normal"),
+        (0, 37.9, "düşük"),
+        (50.1, 9999, "yüksek")
+        ],
+
+        # Trombositler
+        "plt": [
+        (150, 450, "normal"),
+        (0, 149, "düşük"),
+        (451, 9999, "yüksek")
+        ],
+
+         # RDW (Kırmızı Hücre Dağılım Genişliği)
+        "rdw": [
+        (11.5, 14.5, "normal"),
+        (14.6, 9999, "yüksek")
+        ],
+
+        # MCV (Ortalama Eritrosit Hacmi)
+        "mcv": [
+        (80, 100, "normal"),
+        (0, 79, "mikrositik"),
+        (101, 9999, "makrositik")
+        ],
+
+        # MCH (Ortalama Hemoglobin İçeriği)
+        "mch": [
+        (27, 33, "normal"),
+        (0, 26.9, "düşük"),
+        (33.1, 9999, "yüksek")
+        ],
+
+        # MCHC (Hemoglobin Konsantrasyonu)
+        "mchc": [
+        (32, 36, "normal"),
+        (0, 31.9, "düşük"),
+        (36.1, 9999, "yüksek")
+        ],
+
+        # Pıhtılaşma Testleri
+        "inr": [
+        (0.8, 1.2, "normal"),
+        (1.3, 2.0, "hafif yüksek"),
+        (2.1, 9999, "ciddi yüksek")
+        ],
+        "aptt": [
+        (25, 35, "normal"),
+        (36, 9999, "uzamış")
+        ],
+        "fibrinogen": [
+        (200, 400, "normal"),
+        (0, 199, "düşük"),
+        (401, 9999, "yüksek")
+        ],
+
+         # Demir Paneli
+        "iron": [
+        (60, 170, "normal"),
+        (0, 59, "düşük"),
+        (171, 9999, "yüksek")
+        ],
+        "tibc": [
+        (250, 450, "normal"),
+        (451, 9999, "yüksek"),
+        (0, 249, "düşük")
+        ],
+        "ferritin": [
+        (30, 400, "normal"),
+        (0, 29, "düşük"),
+        (401, 9999, "yüksek")
+        ],
+
+        # B12 ve Folat (Anemi değerlendirmesi)
+        "b12": [
+        (200, 900, "normal"),
+        (0, 199, "düşük"),
+        (901, 9999, "yüksek")
+        ],
+        "folate": [
+        (3, 17, "normal"),
+        (0, 2.9, "düşük")
+        ]
+
+
+    },
+
+    "infectious_disease":{
+
+        # Prokalsitonin (Sepsis göstergesi)
+        "procalcitonin": [
+        (0, 0.1, "normal"),
+        (0.11, 0.5, "hafif yüksek"),
+        (0.51, 2.0, "orta yüksek"),
+        (2.01, 9999, "ciddi yüksek (sepsis şüphesi)")
+        ],
+
+        # CRP (C-Reaktif Protein)
+        "crp": [
+        (0, 5, "normal"),
+        (6, 20, "hafif yüksek"),
+        (21, 50, "orta yüksek"),
+        (51, 9999, "ciddi yüksek")
+        ],
+
+        # ESR (Sedimantasyon)
+        "esr": [
+        (0, 20, "normal"),
+        (21, 40, "hafif yüksek"),
+        (41, 9999, "yüksek")
+        ],
+
+        # Laktat (Sepsis / hipoperfüzyon)
+        "lactate": [
+        (0.5, 2.0, "normal"),
+        (2.1, 4.0, "hafif yüksek"),
+        (4.1, 9999, "ciddi yüksek (laktik asidoz)")
+        ],
+
+        # Ferritin (inflamasyon / enfeksiyon / sitokin fırtınası)
+        "ferritin": [
+        (30, 400, "normal"),
+        (401, 1000, "hafif yüksek"),
+        (1001, 9999, "ciddi yüksek (hiperinflamasyon)")
+         ],
+
+        # D-dimer (pıhtılaşma / enfeksiyon / emboli)
+        "d_dimer": [
+        (0, 0.5, "normal"),
+        (0.51, 1.0, "hafif yüksek"),
+        (1.01, 9999, "ciddi yüksek")
+        ],
+
+        # WBC (hematoloji ile bağlantılı)
+         "wbc": [
+        (4.0, 11.0, "normal"),
+        (11.1, 15.0, "hafif yüksek"),
+        (15.1, 9999, "ciddi yüksek"),
+        (0, 3.9, "düşük")
+         ],
+
+        # Lenfosit (viral enfeksiyon göstergesi)
+        "lymphocytes": [
+        (1.0, 3.0, "normal"),
+        (0, 0.99, "düşük (viral enfeksiyon?)"),
+        (3.01, 9999, "yüksek")
+        ],
+
+        # Nötrofil (bakteriyel enfeksiyon göstergesi)
+        "neutrophils": [
+        (2.0, 7.0, "normal"),
+        (7.1, 9999, "yüksek (bakteriyel enfeksiyon?)"),
+        (0, 1.99, "düşük")
+        ]
+    },
+
+    "nephrology":{
+
+        # Böbrek Fonksiyonları
+        "urea": [
+        (10, 50, "normal"),
+        (51, 100, "hafif yüksek"),
+        (101, 9999, "ciddi yüksek")
+        ],
+        "creatinine": [
+        (0.6, 1.3, "normal"),
+        (1.4, 2.0, "hafif yüksek"),
+        (2.1, 9999, "ciddi yüksek")
+        ],
+        "gfr": [
+        (90, 9999, "normal"),
+        (60, 89, "evre 2 böbrek hastalığı"),
+        (30, 59, "evre 3 böbrek hastalığı"),
+        (15, 29, "evre 4 böbrek hastalığı"),
+        (0, 14, "evre 5 (son dönem böbrek yetmezliği)")
+         ],
+
+        # Elektrolitler (Böbrek ile çok ilişkili)
+        "sodium": [
+        (135, 145, "normal"),
+        (146, 160, "yüksek"),
+        (0, 134, "düşük")
+        ],
+        "potassium": [
+        (3.5, 5.0, "normal"),
+        (5.1, 6.0, "hafif yüksek"),
+        (6.1, 9999, "ciddi yüksek (hiperkalemi)")
+        ],
+        "chloride": [
+        (98, 106, "normal"),
+        (107, 120, "yüksek"),
+        (0, 97, "düşük")
+        ],
+        "calcium": [
+        (8.5, 10.5, "normal"),
+        (10.6, 12, "hafif yüksek"),
+        (12.1, 9999, "ciddi yüksek")
+        ],
+        "phosphorus": [
+        (2.5, 4.5, "normal"),
+        (4.6, 9999, "yüksek"),
+        (0, 2.4, "düşük")
+        ],
+        "magnesium": [
+        (1.7, 2.2, "normal"),
+        (2.3, 9999, "yüksek"),
+        (0, 1.6, "düşük")
+        ],
+
+         # İdrar Testleri
+        "urine_protein": [
+        (0, 150, "normal"),
+        (151, 300, "hafif proteinüri"),
+        (301, 9999, "ciddi proteinüri (nefrotik aralık)")
+        ],
+        "urine_albumin": [
+        (0, 30, "normal"),
+        (31, 300, "mikroalbüminüri"),
+        (301, 9999, "makroalbüminüri")
+        ],
+        "urine_creatinine": [
+        (20, 320, "normal"),
+        (0, 19, "düşük"),
+        (321, 9999, "yüksek")
+        ],
+
+        # Albümin / Kreatinin Oranı (ACR)
+        "acr": [
+        (0, 30, "normal"),
+        (31, 300, "mikroalbüminüri"),
+        (301, 9999, "makroalbüminüri")
+        ],
+
+        # Kan pH (böbrek asit-baz dengesi)
+        "blood_ph": [
+        (7.35, 7.45, "normal"),
+        (0, 7.34, "asidoz"),
+        (7.46, 9999, "alkaloz")
+        ],
+
+        # Bikarbonat (HCO3)
+        "hco3": [
+        (22, 26, "normal"),
+        (0, 21.9, "düşük (metabolik asidoz)"),
+        (26.1, 9999, "yüksek (metabolik alkaloz)")
+        ]
+
+    },
+
+    "hepatology": {
+        # ALT (SGPT)
+        "alt": [
+        (0, 40, "normal"),
+        (41, 100, "hafif yüksek"),
+        (101, 300, "orta yüksek"),
+        (301, 9999, "ciddi yüksek (akut hasar?)")
+        ],
+
+        # AST (SGOT)
+        "ast": [
+        (0, 40, "normal"),
+        (41, 100, "hafif yüksek"),
+        (101, 300, "orta yüksek"),
+        (301, 9999, "ciddi yüksek (akut hasar?)")
+        ],
+
+        # GGT (Kolestaz göstergesi)
+        "ggt": [
+        (0, 60, "normal"),
+        (61, 200, "hafif yüksek"),
+        (201, 9999, "ciddi yüksek (kolestaz?)")
+        ],
+
+        # Alkalen Fosfataz (ALP)
+        "alp": [
+        (40, 130, "normal"),
+        (131, 300, "hafif yüksek"),
+        (301, 9999, "ciddi yüksek (kolestaz?)")
+        ],
+
+        # Total Bilirubin
+        "bilirubin_total": [
+        (0, 1.2, "normal"),
+        (1.3, 3.0, "hafif yüksek"),
+        (3.1, 9999, "ciddi yüksek (sarılık)")
+        ],
+
+        # Direct Bilirubin
+        "bilirubin_direct": [
+        (0, 0.3, "normal"),
+        (0.4, 1.0, "hafif yüksek"),
+        (1.1, 9999, "ciddi yüksek")
+        ]
+    },
+
+    "gastroenterology":{
+
+        # Pankreas Enzimleri
+        "amylase": [
+        (30, 110, "normal"),
+        (111, 300, "hafif yüksek"),
+        (301, 9999, "ciddi yüksek (pankreatit?)")
+        ],
+        "lipase": [
+        (0, 160, "normal"),
+        (161, 400, "hafif yüksek"),
+        (401, 9999, "ciddi yüksek (pankreatit için daha spesifik)")
+        ],
+
+        # Fekal Kalprotektin (IBD göstergesi)
+        "fecal_calprotectin": [
+        (0, 50, "normal"),
+        (51, 200, "hafif yüksek (IBS?)"),
+        (201, 9999, "ciddi yüksek (IBD / Crohn / ÜK?)")
+        ],
+
+        # Fekal Gizli Kan (Gastrointestinal kanama)
+        "fecal_occult_blood": [
+        (0, 0, "negatif"),
+        (1, 9999, "pozitif (GİS kanama?)")
+        ],
+
+        # Fekal Elastaz (Pankreas yetmezliği)
+        "fecal_elastase": [
+        (200, 500, "normal"),
+        (100, 199, "hafif düşük (hafif pankreas yetmezliği)"),
+        (0, 99, "ciddi düşük (ekzokrin pankreas yetmezliği)")
+        ],
+
+        # Gastrin (Zollinger-Ellison sendromu / gastrit)
+        "gastrin": [
+        (0, 100, "normal"),
+        (101, 500, "hafif yüksek"),
+        (501, 9999, "ciddi yüksek (Zollinger-Ellison?)")
+        ],
+
+        # Helicobacter pylori Antijen (peptik ülser)
+        "h_pylori_antigen": [
+        (0, 0, "negatif"),
+        (1, 9999, "pozitif (H. pylori enfeksiyonu)")
+         ],
+
+        # Fekal pH (malabsorpsiyon / enfeksiyon)
+        "fecal_ph": [
+        (6.5, 7.5, "normal"),
+        (0, 6.4, "asit (malabsorpsiyon?)"),
+        (7.6, 9999, "alkali (enfeksiyon?)")
+        ],
+
+        # Fekal Yağ (steatore)
+        "fecal_fat": [
+        (0, 7, "normal"),
+        (8, 14, "hafif yüksek"),
+        (15, 9999, "ciddi yüksek (malabsorpsiyon / pankreas yetmezliği)")
+        ]
+
+
+    },
+
+    "pediatrics":{
+
+        # Çocuk WBC (yaşa göre değişir, ortalama değerler)
+        "wbc_child": [
+        (5.0, 15.0, "normal"),
+        (15.1, 20.0, "hafif yüksek"),
+        (20.1, 9999, "ciddi yüksek"),
+        (0, 4.9, "düşük")
+        ],
+
+        # Çocuk Hemoglobin
+        "hgb_child": [
+        (11.0, 16.0, "normal"),
+        (0, 10.9, "düşük"),
+        (16.1, 9999, "yüksek")
+        ],
+
+        # Çocuk Hematokrit
+        "hct_child": [
+        (33, 45, "normal"),
+        (0, 32.9, "düşük"),
+        (45.1, 9999, "yüksek")
+        ],
+
+        # Çocuk Trombosit
+        "plt_child": [
+        (150, 450, "normal"),
+        (0, 149, "düşük"),
+        (451, 9999, "yüksek")
+        ],
+
+        # Yenidoğan Total Bilirubin (çok önemli)
+        "bilirubin_newborn": [
+        (0, 12, "normal"),
+        (12.1, 15, "hafif yüksek"),
+        (15.1, 20, "orta yüksek"),
+        (20.1, 9999, "ciddi yüksek (kernikterus riski)")
+        ],
+
+        # Çocuk CRP
+        "crp_child": [
+        (0, 5, "normal"),
+        (6, 20, "hafif yüksek"),
+        (21, 50, "orta yüksek"),
+        (51, 9999, "ciddi yüksek")
+        ],
+
+        # Çocuk Ferritin
+        "ferritin_child": [
+        (20, 200, "normal"),
+        (0, 19, "düşük"),
+        (201, 9999, "yüksek")
+        ],
+
+        # Çocuk Demir
+        "iron_child": [
+        (50, 120, "normal"),
+        (0, 49, "düşük"),
+        (121, 9999, "yüksek")
+        ],
+
+        # Çocuk Elektrolitler
+        "sodium_child": [
+        (135, 145, "normal"),
+        (146, 160, "yüksek"),
+        (0, 134, "düşük")
+        ],
+
+        "potassium_child": [
+        (3.5, 5.5, "normal"),
+        (5.6, 6.5, "hafif yüksek"),
+        (6.6, 9999, "ciddi yüksek")
+        ],
+
+        "calcium_child": [
+        (8.8, 10.8, "normal"),
+        (10.9, 12, "hafif yüksek"),
+        (12.1, 9999, "ciddi yüksek")
+        ],
+
+        # Çocuk Vitamin D
+        "vitamin_d_child": [
+        (30, 100, "normal"),
+        (20, 29, "hafif düşük"),
+        (0, 19, "ciddi düşük")
+        ],
+
+        # Çocuk B12
+        "b12_child": [
+        (200, 900, "normal"),
+        (0, 199, "düşük"),
+        (901, 9999, "yüksek")
+        ]
+    },
+
+    "ob_gyn":{
+
+        # Beta-hCG (Gebelik hormonu)
+        "beta_hcg": [
+        (0, 5, "negatif"),
+        (6, 25, "şüpheli (tekrar test)"),
+        (26, 999999, "pozitif (gebelik)")
+        ],
+
+        # Gebelik haftasına göre hCG (ortalama aralıklar)
+        "hcg_week_3": [(5, 50, "normal aralık")],
+        "hcg_week_4": [(10, 425, "normal aralık")],
+        "hcg_week_5": [(19, 7340, "normal aralık")],
+        "hcg_week_6": [(1080, 56500, "normal aralık")],
+        "hcg_week_7_8": [(7650, 229000, "normal aralık")],
+        "hcg_week_9_12": [(25700, 288000, "normal aralık")],
+
+        # Progesteron (Gebelik ve ovulasyon için kritik)
+        "progesterone": [
+        (0, 1.5, "foliküler faz"),
+        (2, 20, "luteal faz (normal)"),
+        (21, 9999, "gebelik aralığı")
+        ],
+
+        # Estradiol (E2)
+        "estradiol": [
+        (30, 400, "normal"),
+        (0, 29, "düşük"),
+        (401, 9999, "yüksek")
+        ],
+
+        # FSH (Folikül uyarıcı hormon)
+        "fsh": [
+        (3, 10, "normal"),
+        (11, 20, "hafif yüksek"),
+        (21, 9999, "ciddi yüksek (menopoz?)")
+        ],
+
+        # LH (Luteinize edici hormon)
+        "lh": [
+        (2, 12, "normal"),
+        (13, 9999, "yüksek (PCOS?)")
+        ],
+
+        # LH/FSH oranı (PCOS için kritik)
+        "lh_fsh_ratio": [
+        (0, 1.9, "normal"),
+        (2.0, 9999, "yüksek (PCOS şüphesi)")
+        ],
+
+        # AMH (Anti-Müllerian hormon) – yumurtalık rezervi
+        "amh": [
+        (1.0, 4.0, "normal"),
+        (0, 0.99, "düşük rezerv"),
+        (4.1, 9999, "yüksek (PCOS?)")
+        ],
+
+        # Prolaktin (Hiperprolaktinemi)
+        "prolactin": [
+        (4, 15, "normal"),
+        (16, 25, "hafif yüksek"),
+        (26, 9999, "ciddi yüksek (prolaktinoma?)")
+        ],
+
+        # TSH (Gebelikte özel aralık)
+        "tsh_pregnancy": [
+        (0.1, 2.5, "normal (gebelik)"),
+        (2.6, 9999, "yüksek (hipotiroidi?)"),
+        (0, 0.09, "düşük (hipertiroidi?)")
+        ],
+
+        # DHEA-S (Androjen fazlalığı)
+        "dhea_s": [
+        (35, 430, "normal"),
+        (431, 9999, "yüksek (PCOS / adrenal?)"),
+        (0, 34, "düşük")
+        ]
+    },
+
+    "oncology":{
+
+        # CEA (Kolon kanseri belirteci)
+        "cea": [
+        (0, 3, "normal"),
+        (3.1, 5, "hafif yüksek"),
+        (5.1, 9999, "ciddi yüksek (kolon kanseri?)")
+        ],
+
+        # CA-125 (Over kanseri belirteci)
+        "ca125": [
+        (0, 35, "normal"),
+        (36, 100, "hafif yüksek"),
+        (101, 9999, "ciddi yüksek (over kanseri?)")
+        ],
+
+        # CA 19-9 (Pankreas kanseri belirteci)
+        "ca19_9": [
+        (0, 37, "normal"),
+        (38, 100, "hafif yüksek"),
+        (101, 9999, "ciddi yüksek (pankreas / safra yolu?)")
+        ],
+
+        # AFP (Karaciğer tümörleri)
+         "afp": [
+        (0, 10, "normal"),
+        (11, 100, "hafif yüksek"),
+        (101, 9999, "ciddi yüksek (hepatoselüler karsinom?)")
+        ],
+
+        # PSA (Prostat kanseri)
+        "psa": [
+        (0, 4, "normal"),
+        (4.1, 10, "hafif yüksek"),
+        (10.1, 9999, "ciddi yüksek (prostat kanseri?)")
+        ],
+
+        # Serbest PSA oranı (kanser riskini belirler)
+        "free_psa_ratio": [
+        (0.25, 1.0, "düşük risk"),
+        (0.10, 0.24, "orta risk"),
+        (0, 0.09, "yüksek risk (kanser?)")
+        ],
+
+        # LDH (Lenfoma / lösemi / metastaz)
+        "ldh": [
+        (140, 280, "normal"),
+        (281, 9999, "yüksek (doku hasarı / malignite?)")
+        ],
+
+        # Beta-2 Mikroglobulin (Lenfoma / miyelom)
+        "beta2_microglobulin": [
+        (0.7, 1.8, "normal"),
+        (1.9, 3.5, "hafif yüksek"),
+        (3.6, 9999, "ciddi yüksek (lenfoma / miyelom?)")
+        ],
+
+        # Ferritin (çok yüksek → malignite / inflamasyon)
+        "ferritin": [
+        (30, 400, "normal"),
+        (401, 1000, "hafif yüksek"),
+        (1001, 9999, "ciddi yüksek (hiperinflamasyon / malignite?)")
+        ],
+
+        # CRP (kanser inflamasyonu)
+        "crp": [
+        (0, 5, "normal"),
+        (6, 20, "hafif yüksek"),
+        (21, 50, "orta yüksek"),
+        (51, 9999, "ciddi yüksek")
+        ],
+
+        # D-dimer (kanser + pıhtılaşma)
+        "d_dimer": [
+        (0, 0.5, "normal"),
+        (0.51, 1.0, "hafif yüksek"),
+        (1.01, 9999, "ciddi yüksek (tromboz / malignite?)")
+        ]
+    },
+
+    "neurology":{
+
+        # CK (Kas hasarı / miyopati)
+        "ck": [
+        (30, 200, "normal"),
+        (201, 1000, "hafif yüksek (kas hasarı)"),
+        (1001, 9999, "ciddi yüksek (rabdomiyoliz?)")
+        ],
+
+        # Vitamin B12 (Nöropati için kritik)
+        "b12": [
+        (200, 900, "normal"),
+        (0, 199, "düşük (nöropati riski)"),
+        (901, 9999, "yüksek")
+        ],
+
+        # Folat (Nörolojik fonksiyon)
+        "folate": [
+        (3, 17, "normal"),
+        (0, 2.9, "düşük (nörolojik etkiler)")
+        ],
+
+        # Ammonia (Hepatik ensefalopati → nörolojik)
+        "ammonia": [
+        (15, 45, "normal"),
+        (46, 80, "hafif yüksek"),
+        (81, 9999, "ciddi yüksek (ensefalopati?)")
+        ],
+
+        # Laktat (mitokondriyal hastalık / nörometabolik bozukluk)
+        "lactate": [
+        (0.5, 2.0, "normal"),
+        (2.1, 4.0, "hafif yüksek"),
+        (4.1, 9999, "ciddi yüksek (laktik asidoz)")
+        ],
+
+        # Sodyum (nöbet / bilinç değişikliği)
+        "sodium": [
+        (135, 145, "normal"),
+        (0, 134, "düşük (nöbet riski)"),
+        (146, 160, "yüksek (bilinç değişikliği)")
+        ],
+
+        # Kalsiyum (kas kasılması / nöbet)
+        "calcium": [
+        (8.5, 10.5, "normal"),
+        (0, 8.49, "düşük (tetani / nöbet?)"),
+        (10.6, 9999, "yüksek (bilinç değişikliği?)")
+        ],
+
+        # Magnezyum (nöbet / kas kasılması)
+        "magnesium": [
+        (1.7, 2.2, "normal"),
+        (0, 1.69, "düşük (nöbet / kas kasılması)"),
+        (2.3, 9999, "yüksek")
+        ],
+
+        # CRP (nöroinflamasyon)
+        "crp": [
+        (0, 5, "normal"),
+        (6, 20, "hafif yüksek"),
+        (21, 50, "orta yüksek"),
+        (51, 9999, "ciddi yüksek")
+        ],
+
+        # ESR (kronik nöroinflamasyon)
+        "esr": [
+        (0, 20, "normal"),
+        (21, 40, "hafif yüksek"),
+        (41, 9999, "yüksek")
+        ],
+
+        # TSH (nöropsikiyatrik etkiler)
+        "tsh": [
+        (0.4, 4.0, "normal"),
+        (4.1, 10, "hafif yüksek (hipotiroidi → depresyon?)"),
+        (10.1, 9999, "ciddi yüksek"),
+        (0, 0.39, "düşük (hipertiroidi → anksiyete?)")
+        ]
+    },
+
+    "pulmonology":{
+
+        # D-dimer (Pulmoner emboli için kritik)
+        "d_dimer": [
+        (0, 0.5, "normal"),
+        (0.51, 1.0, "hafif yüksek"),
+        (1.01, 9999, "ciddi yüksek (PE / DVT?)")
+        ],
+
+        # CRP (Enfeksiyon / inflamasyon)
+        "crp": [
+        (0, 5, "normal"),
+        (6, 20, "hafif yüksek"),
+        (21, 50, "orta yüksek"),
+        (51, 9999, "ciddi yüksek")
+        ],
+
+        # Arteriyel Kan Gazı (ABG) – pH
+        "abg_ph": [
+        (7.35, 7.45, "normal"),
+        (0, 7.34, "asidoz"),
+        (7.46, 9999, "alkaloz")
+        ],
+
+        # PaO2 (oksijen basıncı)
+        "pao2": [
+        (80, 100, "normal"),
+        (60, 79, "hafif düşük (hafif hipoksi)"),
+        (40, 59, "orta düşük (orta hipoksi)"),
+        (0, 39, "ciddi düşük (ağır hipoksi)")
+        ],
+
+        # PaCO2 (karbondioksit basıncı)
+        "paco2": [
+        (35, 45, "normal"),
+        (46, 60, "yüksek (hiperkapni / solunum yetmezliği)"),
+        (0, 34, "düşük (hiperventilasyon)")
+        ],
+
+        # HCO3 (bikarbonat – metabolik durum)
+        "hco3": [
+        (22, 26, "normal"),
+        (0, 21.9, "düşük (metabolik asidoz)"),
+        (26.1, 9999, "yüksek (metabolik alkaloz)")
+        ],
+
+        # O2 Saturasyonu (SpO2)
+        "spo2": [
+        (95, 100, "normal"),
+        (90, 94, "hafif düşük"),
+        (80, 89, "orta düşük"),
+        (0, 79, "ciddi düşük (hipoksi)")
+        ],
+
+        # Laktat (hipoperfüzyon / sepsis / ağır solunum yetmezliği)
+        "lactate": [
+        (0.5, 2.0, "normal"),
+        (2.1, 4.0, "hafif yüksek"),
+        (4.1, 9999, "ciddi yüksek (laktik asidoz)")
+        ],
+
+        # Eozinofil (Astım / alerji)
+        "eosinophils": [
+        (0, 0.5, "normal"),
+        (0.51, 1.0, "hafif yüksek"),
+        (1.01, 9999, "ciddi yüksek (alerji / astım?)")
+        ],
+
+        # COHb (Karbonmonoksit zehirlenmesi)
+        "carboxyhemoglobin": [
+        (0, 2, "normal"),
+        (3, 10, "hafif yüksek"),
+        (11, 9999, "ciddi yüksek (CO zehirlenmesi)")
+        ]
+    },
+
+    "dermatology":{
+
+        # Vitamin D (Saç dökülmesi, egzama, bağışıklık)
+        "vitamin_d": [
+        (30, 100, "normal"),
+        (20, 29, "hafif düşük"),
+        (0, 19, "ciddi düşük (deri bariyeri zayıf)")
+        ],
+
+        # Çinko (Saç dökülmesi, yara iyileşmesi)
+        "zinc": [
+        (70, 120, "normal"),
+        (0, 69, "düşük (saç dökülmesi / egzama?)"),
+        (121, 9999, "yüksek")
+        ],
+
+        # Ferritin (Saç dökülmesi için kritik)
+        "ferritin": [
+        (30, 400, "normal"),
+        (0, 29, "düşük (saç dökülmesi?)"),
+        (401, 9999, "yüksek (inflamasyon?)")
+        ],
+
+        # IgE (Alerji / atopik dermatit)
+        "ige": [
+        (0, 100, "normal"),
+        (101, 400, "hafif yüksek (alerji?)"),
+        (401, 9999, "ciddi yüksek (atopik dermatit?)")
+        ],
+
+        # Eozinofil (Alerji / egzama)
+        "eosinophils": [
+        (0, 0.5, "normal"),
+        (0.51, 1.0, "hafif yüksek"),
+        (1.01, 9999, "ciddi yüksek (alerjik reaksiyon?)")
+        ],
+
+        # ANA (Otoimmün deri hastalıkları)
+        "ana": [
+        (0, 1, "negatif"),
+        (2, 9999, "pozitif (lupus / otoimmün?)")
+        ],
+
+        # CRP (Deri inflamasyonu)
+        "crp": [
+        (0, 5, "normal"),
+        (6, 20, "hafif yüksek"),
+        (21, 50, "orta yüksek"),
+        (51, 9999, "ciddi yüksek")
+        ],
+
+        # ESR (Kronik inflamasyon)
+        "esr": [
+        (0, 20, "normal"),
+        (21, 40, "hafif yüksek"),
+        (41, 9999, "yüksek")
+        ],
+
+        # B12 (deri sağlığı / pigmentasyon)
+        "b12": [
+        (200, 900, "normal"),
+        (0, 199, "düşük"),
+        (901, 9999, "yüksek")
+        ],
+
+        # Folat (deri yenilenmesi)
+        "folate": [
+        (3, 17, "normal"),
+        (0, 2.9, "düşük")
+        ]
+    },
+
+    "urology":{
+
+
+        # PSA (Prostat kanseri taraması)
+        "psa": [
+        (0, 4, "normal"),
+        (4.1, 10, "hafif yüksek"),
+        (10.1, 9999, "ciddi yüksek (prostat kanseri?)")
+        ],
+
+        # Serbest PSA oranı (risk değerlendirmesi)
+        "free_psa_ratio": [
+        (0.25, 1.0, "düşük risk"),
+        (0.10, 0.24, "orta risk"),
+        (0, 0.09, "yüksek risk (kanser?)")
+        ],
+
+        # Kreatinin (böbrek fonksiyonu)
+        "creatinine": [
+        (0.6, 1.3, "normal"),
+        (1.4, 2.0, "hafif yüksek"),
+        (2.1, 9999, "ciddi yüksek")
+        ],
+
+        # Üre
+        "urea": [
+        (10, 50, "normal"),
+        (51, 100, "hafif yüksek"),
+        (101, 9999, "ciddi yüksek")
+        ],
+
+        # Ürik Asit (Böbrek taşı / gut)
+        "uric_acid": [
+        (3.5, 7.2, "normal"),
+        (7.3, 9.0, "hafif yüksek"),
+        (9.1, 9999, "ciddi yüksek (gut / taş?)")
+        ],
+
+        # İdrar pH (taş tipi için kritik)
+        "urine_ph": [
+        (5.0, 7.0, "normal"),
+        (0, 4.9, "asit (ürik asit taşı?)"),
+        (7.1, 9999, "alkali (fosfat taşı?)")
+        ],
+
+        # İdrar Protein (nefrotik sendrom)
+        "urine_protein": [
+        (0, 150, "normal"),
+        (151, 300, "hafif proteinüri"),
+        (301, 9999, "ciddi proteinüri (nefrotik aralık)")
+        ],
+
+        # İdrar Albümin
+        "urine_albumin": [
+        (0, 30, "normal"),
+        (31, 300, "mikroalbüminüri"),
+        (301, 9999, "makroalbüminüri")
+         ],
+
+        # ACR (Albümin/Kreatinin oranı)
+        "acr": [
+        (0, 30, "normal"),
+        (31, 300, "mikroalbüminüri"),
+        (301, 9999, "makroalbüminüri")
+        ],
+
+        # İdrar Nitrit (bakteriyel enfeksiyon)
+        "urine_nitrite": [
+        (0, 0, "negatif"),
+        (1, 9999, "pozitif (bakteriyel İYE)")
+        ],
+
+        # İdrar Lökosit (enfeksiyon)
+        "urine_leukocyte": [
+        (0, 10, "normal"),
+        (11, 9999, "yüksek (İYE?)")
+        ],
+
+        # İdrar Kristalleri (taş öncüsü)
+        "urine_crystals": [
+        (0, 0, "yok"),
+        (1, 9999, "var (taş riski)")
+        ]
+
+
+    },
+
+    "rheumatology":{
+
+        # Romatoid Artrit Belirteçleri
+        "rf": [
+        (0, 14, "negatif"),
+        (15, 30, "hafif pozitif"),
+        (31, 9999, "pozitif (RA?)")
+        ],
+        "anti_ccp": [
+        (0, 20, "negatif"),
+        (21, 39, "şüpheli"),
+        (40, 9999, "pozitif (RA için spesifik)")
+        ],
+
+        # Lupus Belirteçleri
+        "ana": [
+        (0, 1, "negatif"),
+        (2, 9999, "pozitif (otoimmün?)")
+        ],
+        "anti_ds_dna": [
+        (0, 30, "normal"),
+        (31, 100, "hafif yüksek"),
+        (101, 9999, "pozitif (SLE?)")
+        ],
+        "anti_smith": [
+        (0, 1, "negatif"),
+        (2, 9999, "pozitif (SLE için spesifik)")
+        ],
+
+        # Sjögren Sendromu
+        "anti_ro": [
+        (0, 1, "negatif"),
+        (2, 9999, "pozitif (Sjögren / SLE?)")
+        ],
+         "anti_la": [
+        (0, 1, "negatif"),
+        (2, 9999, "pozitif (Sjögren?)")
+        ],
+
+        # Vaskülit Belirteçleri
+        "anca_p": [
+        (0, 1, "negatif"),
+        (2, 9999, "pozitif (MPO-ANCA / vaskülit?)")
+        ],
+        "anca_c": [
+        (0, 1, "negatif"),
+        (2, 9999, "pozitif (PR3-ANCA / vaskülit?)")
+         ],
+
+        # Skleroderma
+        "anti_scl70": [
+        (0, 1, "negatif"),
+        (2, 9999, "pozitif (skleroderma?)")
+        ],
+        "anti_centromere": [
+        (0, 1, "negatif"),
+        (2, 9999, "pozitif (CREST?)")
+        ],
+
+        # Behçet Hastalığı
+        "crp": [
+        (0, 5, "normal"),
+        (6, 20, "hafif yüksek"),
+        (21, 50, "orta yüksek"),
+        (51, 9999, "ciddi yüksek")
+        ],
+        "esr": [
+        (0, 20, "normal"),
+        (21, 40, "hafif yüksek"),
+        (41, 9999, "yüksek")
+        ],
+
+        # FMF (Ailevi Akdeniz Ateşi)
+        "serum_amyloid_a": [
+        (0, 6, "normal"),
+        (7, 100, "yüksek (FMF atağı?)"),
+        (101, 9999, "çok yüksek (amiloidoz riski)")
+        ],
+
+        # Otoinflamasyon / Sitokin Fırtınası
+        "ferritin": [
+        (30, 400, "normal"),
+        (401, 1000, "hafif yüksek"),
+        (1001, 9999, "ciddi yüksek (MAS / HLH?)")
+        ],
+
+        # Ürik Asit (Gut)
+        "uric_acid": [
+        (3.5, 7.2, "normal"),
+        (7.3, 9.0, "hafif yüksek"),
+        (9.1, 9999, "ciddi yüksek (gut?)")
+        ]
+    }
+
 }
+
+#---16 Branslık tam liste---
+
+BRANCHES = [
+    "Dahiliye",
+    "Kardiyoloji",
+    "Endokrinoloji",
+    "Hematoloji",
+    "Enfeksiyon",
+    "Nefroloji",
+    "Hepatoloji",
+    "Gastroenteroloji",
+    "Pediatri",
+    "Kadın Doğum",
+    "Onkoloji",
+    "Nöroloji",
+    "Göğüs Hastalıkları",
+    "Dermatoloji",
+    "Üroloji",
+    "Romatoloji"
+]
+
+
+
+
+
 
 
 
@@ -66,44 +1358,62 @@ class DataAnalyseLogic:
 
 
     def train(self, target, features,model_type):
-        X = self.df[features]
-        y = self.df[target]
+        X = self.df[features].copy()
+        y = self.df[target].copy()
+
+        #Hedef kolon kategorik mi?
+        is_categorical = (self.df[target].dtype == "object")
 
 
-        #---Numeric'e çevir
-        X = X.apply(pd.to_numeric,errors='coerce')
-        y = pd.to_numeric(y,errors='coerce')
+        #Kategorik hedef kolon ise encode et
+        if is_categorical:
+            le = LabelEncoder()
+            y = le.fit_transform(y.astype(str))
+            self.label_encoder = le
 
-        #---NaN satırları at---
-        mask = X.notna().all(axis=1) & y.notna()
+        # ---Feature kolonlarını Numeric'e çevir
+        X = X.apply(pd.to_numeric, errors='coerce')
+
+        # ---NaN satırları at---
+        mask = X.notna().all(axis=1) & pd.notna(y)
         X = X[mask]
         y = y[mask]
 
-        #---Bos veri kontrolu--
+        # ---Bos veri kontrolu--
         if len(X) == 0 or len(y) == 0:
-            print("Filtre sonraı veri seti boş! Model eğitilemez.")
-            return
-
-        if self.df[target].dtype not in ["int64" ,"object","category"]:
-            print("Hedef kolon sınıflandırma için uygun değil!")
+            print("Filtre sonrası veri seti boş! Model eğitilemez.")
             return
 
         #--Model Seçimi--
-
         if model_type == "RandomForest":
-            self.model = RandomForestClassifier(n_estimators=200)
+            if is_categorical:
+                from sklearn.ensemble import RandomForestClassifier
+                self.model = RandomForestClassifier(n_estimators=200)
+            else:
+                from sklearn.ensemble import RandomForestRegressor
+                self.model = RandomForestRegressor(n_estimators=200)
+
         elif model_type == "LogisticRegression":
+            if not is_categorical:
+                print("LogisticRegression sadece kategorik hedef kolonlarda çalışır!")
+                return
+            from sklearn.linear_model import LogisticRegression
             self.model = LogisticRegression(max_iter=2000)
         else:
             print("Bilinmeyen model türü!")
             return
 
-        #Sadece numeric kolonları seç
+        #----Sadece numeric kolonları seç----
         numeric_X = X.select_dtypes(include=["float64", "int64"])
+        # Kolon isimlerini kaydet
+        self.feature_names = numeric_X.columns.tolist()
+
+        #---Ölçekleme / Numpy dönüşümü---
 
         if model_type == "LogisticRegression":
             scaler = StandardScaler()
             numeric_X = scaler.fit_transform(numeric_X)
+            self.scaler = scaler
         else:
             numeric_X = numeric_X.values
 
@@ -120,10 +1430,38 @@ class DataAnalyseLogic:
 
         return self.model.score(X_test, y_test)
 
-    def predict(self, row_index, features):
-        row = self.df.iloc[row_index]
-        X_row = pd.DataFrame([row[features].values],columns=features)
-        return self.model.predict(X_row)[0]
+    def predict(self, input_dict):
+        feature_values = []
+        # 1)FEature kolonlarını sırayla alıyor
+        for col in self.feature_names:
+            val = input_dict.get(col,None)
+
+            if val is None:
+                print(f"{col} için değer bulunamadı!")
+                return None
+
+            try:
+                val = float(val)
+            except:
+                print(f"{col} numeric değil!")
+                return None
+
+            feature_values.append(val)
+
+        # 2) Logistic Regression ise ölçekleme yap
+        if hasattr(self,"scaler"):
+            feature_values = self.scaler.transform([feature_values])
+        else:
+            feature_values = [feature_values]
+
+        # 3) Tahmin yap
+        pred = self.model.predict(feature_values)
+
+        # 4) Eğer hedef kolon encode edildiyse geri çevir
+        if hasattr(self,"label_encoder"):
+            pred = self.label_encoder.inverse_transform(pred)
+
+        return pred[0]
 
     def null_analysis(self):
         if self.df is None:
@@ -368,8 +1706,21 @@ class DataAnalyseLogic:
             print("Model henüz eğitilmedi!")
             return None
 
+        if self.X_train is None:
+            print("X_train bulunamadı! Model eğitimi tamamlanmamış.")
+            return None
+
+        if not hasattr(self.model,"feature_importances_"):
+            print("Bu model feature_importances_ desteklemiyor.")
+            return None
+
+        # X_train NumPy array -> kolon isimleri burdan alınıyor
+        if hasattr(self,"feature_names"):
+            feature_names = self.feature_names
+        else:
+            feature_names = [f"feature_{i}" for i in range(len(self.model.feature_importances_))]
+
         importances = self.model.feature_importances_
-        feature_names = self.X_train.columns
 
         return dict(zip(feature_names,importances))
 
@@ -428,7 +1779,7 @@ class DataAnalyseLogic:
         """
 
         #Eğer kolon referans tablosunda yoksa sınıflandırma yapmaz
-        if col_name not in REFERANCE_RANGES:
+        if col_name not in REFERENCE_RANGES:
             return "Referans aralığı yok!"
 
         #Değer numeric'e çevir
@@ -438,7 +1789,7 @@ class DataAnalyseLogic:
             return "Geçersiz değer!"
 
         #Kolonun referans aralıklarını al
-        ranges = REFERANCE_RANGES[col_name]
+        ranges = REFERENCE_RANGES[col_name]
 
         #Aralıkları kontrol et
         for low,high,label in ranges:
@@ -458,6 +1809,16 @@ class DataAnalyseLogic:
         )
 
         return report
+
+
+
+    def translate_to_turkish(self,text):
+        try:
+            translator = Translator()
+            result = translator.translate(text,src="en",dest="tr")
+            return result.text
+        except Exception as e:
+            return f"Çeviri hatası {e}"
 
 
 
@@ -614,42 +1975,71 @@ class DataAnalyseGUI:
         self.button_predict = tk.Button(self.frame_center, text='Tahmin Yap', command=self.predict_row)
         self.button_predict.grid(row=16,column=0,pady=10)
 
+        self.branch_var = tk.StringVar()
+
+        self.branch_dropdown = ttk.Combobox(
+            self.frame_right,
+            textvariable=self.branch_var,
+            values=BRANCHES,
+            state="readonly",
+            width=30
+        )
+
+        self.result_label = tk.Label(
+            self.frame_right,
+            text="Branş Seçiniz...",
+            font=("Arial", 12)
+        )
+
+        self.result_label.grid(row=0, column=0, padx=10, pady=10)
+        self.branch_dropdown.grid(row=1, column=0, padx=10, pady=10)
+
+        self.branch_dropdown.bind("<<ComboboxSelected>>", self.on_branch_selected)
+
 
         #--- BASİT FİLTRELEME---
         self.lbl_filter = tk.Label(self.frame_right,text="Veri Filtreleme:")
-        self.lbl_filter.grid(row=1,column=0,pady=5)
+        self.lbl_filter.grid(row=2,column=0,pady=5)
 
         self.combo_filter_col = ttk.Combobox(self.frame_right,state="readonly")
-        self.combo_filter_col.grid(row=2,column=0,pady=5)
+        self.combo_filter_col.grid(row=3,column=0,pady=5)
 
         self.combo_filter_op = ttk.Combobox(self.frame_right,state="readonly",
                                             values=["<",">",">=","<=","==","!="])
-        self.combo_filter_op.grid(row=3,column=0,pady=5)
+        self.combo_filter_op.grid(row=4,column=0,pady=5)
         self.combo_filter_op.set("==")
 
         self.entry_filter_value = tk.Entry(self.frame_right)
-        self.entry_filter_value.grid(row=4,column=0,pady=5)
+        self.entry_filter_value.grid(row=5,column=0,pady=5)
 
         #Filtreleme düğmesi
         self.btn_apply_filter = tk.Button(self.frame_right,text="Filtre Uygula",command=self.apply_filter_button)
-        self.btn_apply_filter.grid(row=5,column=0,pady=5)
+        self.btn_apply_filter.grid(row=6,column=0,pady=10)
 
-        # --- AI Yorum Kutusu ---
-        self.ai_frame = tk.Frame(self.frame_right)
-        self.ai_frame.grid(row=6,column=0,padx=10,pady=10)
+        self.btn_clear_filter = tk.Button(self.frame_right, text="Filtreyi Kaldır", command=self.clear_filter_gui)
+        self.btn_clear_filter.grid(row=8, column=0, columnspan=3, pady=5)
 
-        self.ai_textbox = tk.Text(self.ai_frame, height=10,width=40,wrap="word")
-        self.ai_textbox.pack(side="left",fill="both",expand=True)
+        self.btn_ai = tk.Button(
+            self.frame_right,
+            text="AI Analiz Yap",
+            command=self.ai_analysis_button
+        )
+        self.btn_ai.grid(row=9,column=0,padx=10,pady=10)
 
-        ai_textbox_scrollbar = tk.Scrollbar(self.ai_frame,command=self.ai_textbox.yview)
-        ai_textbox_scrollbar.pack(side="right",fill="y")
+        # Türkce AI Yorum
+        self.ai_text = tk.Text(
+            self.frame_right,
+            height=10,
+            width=40,
+            font=("Arial",11),
+            wrap="word"
+        )
 
-        self.ai_textbox.config(yscrollcommand=ai_textbox_scrollbar.set)
+        self.ai_text.grid(row=10,column=0,padx=10,pady=10)
 
-        self.btn_clear_filter = tk.Button(self.frame_right,text="Filtreyi Kaldır",command=self.clear_filter_gui)
-        self.btn_clear_filter.grid(row=7,column=0,columnspan=3,pady=5)
-
-
+        scroll = tk.Scrollbar(self.frame_right,command=self.ai_text.yview)
+        scroll.grid(row=10,column=1,sticky="ns")
+        self.ai_text.config(yscrollcommand=scroll.set)
 
     def file_upload(self):
         file_path = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
@@ -731,36 +2121,63 @@ class DataAnalyseGUI:
             return
 
         summary = self.generate_full_summary()
+        if not summary.strip():
+            print("AI analiz için yeterli veri yok!")
+            return
         self.ask_ai_async(summary)
 
     def predict_row(self):
         if self.logic.model is None:
             print("Lütfen önce modeli eğitin!")
             return
+
+        #--- veri seti boşmu?---
+        if self.logic.df is None or len(self.logic.df) == 0:
+            print("Veri seti boş!Tahmin yapılamaz!")
+            return
+
+        #---Filtre sonrası kalan satır sayısını göster
+        total_rows = len(self.logic.df)
+        print(f"Filtre sonrası kalan satır sayısı: {total_rows}")
+
+        #Kullanıcıdan satır numarası al(geçerli aralık içinde)
         try:
-            row_index = simpledialog.askinteger("Satır seç", "Tahmin yapılacak satır:")
+            row_index = simpledialog.askinteger("Satır seç",
+                                                f"Tahmin yapılacak satır numarası: (0- {total_rows - 1}):")
             if row_index is None:
                 return
 
-            if row_index < 0 or row_index >= len(self.logic.df):
+            if row_index < 0 or row_index >= total_rows:
                 print("Geçersiz satır numarası!")
                 return
 
+            # Kullanıcının seçtiği feature kolonlarını al
             features = [self.list_features.get(i) for i in self.list_features.curselection()]
             if not features:
                 print("Lütfen en az bir özellik kolon seçin!")
                 return
 
-            prediction = self.logic.predict(row_index, features)
-            print("Tahmin: ", prediction)
+            # Satırdan feature değerlerini çek -> input_dict oluştur
+
+            row = self.logic.df.iloc[row_index]
+            input_dict = {}
+
+            for col in features:
+                val = row[col]
+                input_dict[col] = val
+
+            #Tahmin yap
+            prediction = self.logic.predict(input_dict)
+            print(f"Tahmin: {prediction}")
 
         except Exception as e:
             print("Tahmin sırasında hata oluştu: ",e)
-
-        if self.logic.df is None or len(self.logic.df) == 0:
             return
 
         summary = self.generate_full_summary()
+        if not summary.strip():
+            print("AI analiz için yeterli veri yok!")
+            return
         self.ask_ai_async(summary)
 
     def null_analysis_gui(self):
@@ -829,6 +2246,9 @@ class DataAnalyseGUI:
             return
 
         summary = self.generate_full_summary()
+        if not summary.strip():
+            print("AI analiz için yeterli veri yok!")
+            return
         self.ask_ai_async(summary)
 
     def scatter_plot(self):
@@ -957,17 +2377,29 @@ class DataAnalyseGUI:
             print("Lütfen bir kolon ve değer seçin!")
             return
 
+        #---Sayısal kolon kontrolu
         if not pd.api.types.is_numeric_dtype(self.logic.df[col]):
             print("Bu kolon sayısal değil,filtre uygulanamaz!")
             return
 
+        #---Filtreyi uygula---
         self.logic.apply_filter(col,op,value)
         print("Filtre uygulandı.")
 
-        if self.logic.df is None or len(self.logic.df) == 0:
+        remaining = len(self.logic.df)
+
+
+        if self.logic.df is None or remaining == 0:
+            print(f"Filtre uygulandı fakat hiç satır bulunamadı!({col} {op} {value}")
             return
 
+        print(f"Fiktre uygulandı: {col} {op} {value} -> Kalan sayır: {remaining}")
+
+        # AI analiz için veri varsa devam et
         summary = self.generate_full_summary()
+        if not summary.strip():
+            print("AI analiz için yeterli veri yok!")
+            return
         self.ask_ai_async(summary)
 
     def apply_filter_button(self):
@@ -988,6 +2420,9 @@ class DataAnalyseGUI:
             return
 
         summary = self.generate_full_summary()
+        if not summary.strip():
+            print("AI analiz için yeterli veri yok!")
+            return
         self.ask_ai_async(summary)
 
     def generate_full_summary(self):
@@ -1054,14 +2489,6 @@ class DataAnalyseGUI:
         score_text = self.lbl_score.cget("text")
         summary += f"Model başarı oranı: {score_text}\n"
 
-        #---FEATURE_IMPORTANCE varsa ekle ----
-        if self.logic.model is not None and hasattr(self.logic.model,"feature_importances_"):
-            summary += "\n Feature Importance:\n"
-            fi = self.logic.feature_importance()
-            for k,v in fi.items():
-                summary += f" - {k}: {v} \n"
-
-        summary += "\n"
 
         # --- Tahmin Bilgisi ---
         summary += "=== TAHMİN BİLGİSİ ===\n"
@@ -1082,6 +2509,19 @@ class DataAnalyseGUI:
         summary += f"X kolon: {x if x else 'Seçilmedi'}\n"
         summary += f"Y kolon: {y if y else 'Seçilmedi'}\n"
         summary += f"Renk kolon: {color if color else 'Seçilmedi'}\n"
+
+        # ---FEATURE_IMPORTANCE varsa ekle ----
+        if self.logic.model is not None and hasattr(self.logic.model, "feature_importances_"):
+
+            try:
+                fi = self.logic.feature_importance()
+                if fi:
+                    summary += "\n Feature Importance:\n"
+                    for k, v in fi.items():
+                        summary += f" - {k}: {v:.4f} \n"
+            except:
+                summary += "\n Feature importance hesaplanamadı.\n"
+        summary += "\n"
 
         summary += "\n=== GENEL DEĞERLENDİRME İSTEĞİ ===\n"
         summary += (
@@ -1106,49 +2546,89 @@ class DataAnalyseGUI:
 
         summary += "\n=== ÖZET SONU ==="
 
-        summary = summary[:3000]
-
         summary += (
             "\n=== BAĞLAM SIFIRLAMA===\n"
             "Bu analiz tamamen bağımsızdır.Önceki analizlerle bağlantı kurma."
             "Bu veri setini tek başına değerlendir."
         )
-        return summary
 
+        return summary[:3000]
 
-    def ask_ai_async(self,text):
-        thread = threading.Thread(target=self.ask_ai_worker,args=(text,))
+    def ask_ai_async(self,summary):
+        thread = threading.Thread(target=self.run_ai_analysis,args=(summary,))
+        thread.daemon=True
         thread.start()
 
-    def ask_ai_worker(self,text):
-        process = subprocess.Popen(
+
+
+    def run_ai_analysis(self,summary):
+        try:
+
+            # 2) AI worker'ı çalıştır
+            process = subprocess.Popen(
             ["python","ai_worker.py"],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True,
-            encoding="utf-8",
-            errors="ignore"
+            text=False
+            )
 
-        )
+            # 3) Prompt'u AI worker'a gonder
+            ai_output_bytes,error_bytes = process.communicate(
+                summary.encode("utf-8","ignore"))
 
-        ai_response,ai_error= process.communicate(input=text)
+            #---UTF-8 olarak oku---
+            try:
+                ai_output = ai_output_bytes.decode("utf-8","ignore")
+            except:
+                ai_output = "AI çıktısı UTF-8 olarak çözülemedi."
 
-        #--- GUI güncellemesini ana thread'e yaz ---
-        self.ai_textbox.after(0, lambda: self.update_ai_textbox(ai_response))
+            # --- Hata varsa UTF-8 olarak oku
+            try:
+                error=error_bytes.decode("utf-8","ignore")
+            except:
+                error=""
 
-    def update_ai_textbox(self,ai_response):
-        self.ai_textbox.delete("1.0","end")
-        try:
-            self.ai_textbox.insert("end",ai_response)
-        except Exception:
-            safe_text = ai_response.encode("utf-8","ignore").decode("utf-8","ignore")
-            self.ai_textbox.insert("end",safe_text)
+            if error.strip():
+                self.ai_text.after(0,lambda:self.update_ai_text(f"AI hata verdi:\n{error}"))
+                return
+
+            # 4) İngilizce -> Türkçe çeviri
+            translator = Translator()
+            try:
+                turkish_output = translator.translate(ai_output,src="en",dest="tr").text
+            except:
+                turkish_output = "Çeviri yapılamadı."
+
+
+            # 5)GUI'ye  yaz
+            self.ai_text.after(0, lambda: self.update_ai_text(turkish_output))
+        except Exception as e:
+            self.ai_text.after(0,lambda:self.update_ai_text(f"AI çalışırken hata oluştu: {e}"))
+
+    def update_ai_text(self,ai_response):
+        #GUİ güvenli yazma
+        self.ai_text.delete("1.0", tk.END)
+        self.ai_text.insert(tk.END, ai_response)
+
     def clear_filter_gui(self):
         print("Filtre kaldırıldı,veri yeniden yüklendi!")
         self.logic.df = self.logic.df_original.copy()
 
         self.ask_ai_async(self.generate_full_summary())
+
+    def on_branch_selected(self,event):
+        selected = self.branch_var.get()
+        self.result_label.config(text=f"Seçilen Branş:{selected}")
+
+    def ai_analysis_button(self):
+        summary = self.generate_full_summary()
+
+        if not summary.strip():
+            print("AI analiz için yeterli veri yok!")
+            return
+
+        self.ask_ai_async(summary)
 
 if __name__ == "__main__":
     root = tk.Tk()
