@@ -18,1280 +18,2238 @@ from sklearn.preprocessing import StandardScaler
 
 #---REFERANS ARALIKLAR TABLOSU----
 
+AGE_GROUPS = {
+    "newborn": (0, 0.1),      # 0–1 ay
+    "infant": (0.1, 1),       # 1 ay–1 yaş
+    "toddler": (1, 3),        # 1–3 yaş
+    "child": (4, 12),         # 4–12 yaş
+    "adolescent": (13, 18),   # 13–18 yaş
+    "adult": (19, 64),        # 19–64 yaş
+    "elderly": (65, 200)      # 65+
+}
+
+PREGNANCY_STAGES = {
+    "non_pregnant": None,
+    "first_trimester": (0, 13),
+    "second_trimester": (14, 27),
+    "third_trimester": (28, 42)
+}
+
+
 REFERENCE_RANGES = {
     "internal_medicine": {
-        # Karaciğer Fonksiyonları
-        "sgpt": [(0,40,"normal"), (41,100,"hafif yüksek"), (101,300,"orta yüksek"), (300,9999,"ciddi yüksek")],
-        "sgot": [(0,40,"normal"), (41,100,"hafif yüksek"), (101,300,"orta yüksek"), (300,9999,"ciddi yüksek")],
-        "alkphos": [(40,130,"normal"), (131,300,"hafif yüksek"), (300,9999,"yüksek")],
-        "tot_bilirubin": [(0,1.2,"normal"), (1.3,3,"hafif yüksek"), (3,9999,"yüksek")],
-        "direct_bilirubin": [(0,0.3,"normal"), (0.4,1,"hafif yüksek"), (1,9999,"yüksek")],
-        "albumin": [(3.5,5.5,"normal"), (0,3.49,"düşük")],
-        "tot_proteins": [(6.0,8.3,"normal"), (0,5.99,"düşük"), (8.31,9999,"yüksek")],
-        "ag_ratio": [(1.0,2.2,"normal"), (0,0.99,"düşük"), (2.21,9999,"yüksek")],
+        'lab':{
+            "liver_panel": {
+                "sgpt": [(0,40,"normal"), (41,100,"hafif yüksek"), (101,300,"orta yüksek"), (300,9999,"ciddi yüksek")],
+                "sgot": [(0,40,"normal"), (41,100,"hafif yüksek"), (101,300,"orta yüksek"), (300,9999,"ciddi yüksek")],
+                "alkphos": [(40,130,"normal"), (131,300,"hafif yüksek"), (300,9999,"yüksek")],
+                "tot_bilirubin": [(0,1.2,"normal"), (1.3,3,"hafif yüksek"), (3,9999,"yüksek")],
+                "direct_bilirubin": [(0,0.3,"normal"), (0.4,1,"hafif yüksek"), (1,9999,"yüksek")],
+                "albumin": [(3.5,5.5,"normal"), (0,3.49,"düşük")],
+                "tot_proteins": [(6.0,8.3,"normal"), (0,5.99,"düşük"), (8.31,9999,"yüksek")],
+                "ag_ratio": [(1.0,2.2,"normal"), (0,0.99,"düşük"), (2.21,9999,"yüksek")]
+            },
 
-        # Böbrek Fonksiyonları
-        "urea": [(10,50,"normal"), (51,100,"hafif yüksek"), (101,9999,"yüksek")],
-        "creatinine": [(0.6,1.3,"normal"), (1.4,2.0,"hafif yüksek"), (2.1,9999,"yüksek")],
-        "gfr": [(90,9999,"normal"), (60,89,"hafif düşük"), (30,59,"orta düşük"), (0,29,"ciddi düşük")],
+            "kidney_panel": {
+                "urea": [(10,50,"normal"), (51,100,"hafif yüksek"), (101,9999,"yüksek")],
+                "creatinine": [(0.6,1.3,"normal"), (1.4,2.0,"hafif yüksek"), (2.1,9999,"yüksek")],
+                "gfr": [(90,9999,"normal"), (60,89,"hafif düşük"), (30,59,"orta düşük"), (0,29,"ciddi düşük")]
+            },
 
-        # Kan Şekeri ve Metabolizma
-        "glucose": [(70,99,"normal"), (100,125,"prediyabet"), (126,9999,"diyabet")],
-        "hba1c": [(4.0,5.6,"normal"), (5.7,6.4,"prediyabet"), (6.5,9999,"diyabet")],
-        "insulin": [(2,25,"normal"), (26,9999,"yüksek")],
-        "homa_ir": [(0,2,"normal"), (2.1,2.9,"hafif yüksek"), (3,9999,"insülin direnci")],
+            "metabolism_panel": {
+                "glucose": [(70,99,"normal"), (100,125,"prediyabet"), (126,9999,"diyabet")],
+                "hba1c": [(4.0,5.6,"normal"), (5.7,6.4,"prediyabet"), (6.5,9999,"diyabet")],
+                "insulin": [(2,25,"normal"), (26,9999,"yüksek")],
+                "homa_ir": [(0,2,"normal"), (2.1,2.9,"hafif yüksek"), (3,9999,"insülin direnci")]
+            },
 
-        # Elektrolitler
-        "sodium": [(135,145,"normal"), (146,160,"yüksek"), (0,134,"düşük")],
-        "potassium": [(3.5,5.0,"normal"), (5.1,6.0,"hafif yüksek"), (6.1,9999,"ciddi yüksek")],
-        "chloride": [(98,106,"normal"), (107,120,"yüksek"), (0,97,"düşük")],
-        "calcium": [(8.5,10.5,"normal"), (10.6,12,"hafif yüksek"), (12.1,9999,"ciddi yüksek")],
-        "phosphorus": [(2.5,4.5,"normal"), (4.6,9999,"yüksek"), (0,2.4,"düşük")],
-        "magnesium": [(1.7,2.2,"normal"), (2.3,9999,"yüksek"), (0,1.6,"düşük")],
+            "electrolytes": {
+                "sodium": [(135,145,"normal"), (146,160,"yüksek"), (0,134,"düşük")],
+                "potassium": [(3.5,5.0,"normal"), (5.1,6.0,"hafif yüksek"), (6.1,9999,"ciddi yüksek")],
+                "chloride": [(98,106,"normal"), (107,120,"yüksek"), (0,97,"düşük")],
+                "calcium": [(8.5,10.5,"normal"), (10.6,12,"hafif yüksek"), (12.1,9999,"ciddi yüksek")],
+                "phosphorus": [(2.5,4.5,"normal"), (4.6,9999,"yüksek"), (0,2.4,"düşük")],
+                "magnesium": [(1.7,2.2,"normal"), (2.3,9999,"yüksek"), (0,1.6,"düşük")]
+            },
 
-        # Tiroid Fonksiyonları
-        "tsh": [(0.4,4.0,"normal"), (4.1,10,"hafif yüksek"), (10.1,9999,"ciddi yüksek")],
-        "ft4": [(0.8,1.8,"normal"), (0,0.79,"düşük"), (1.81,9999,"yüksek")],
-        "ft3": [(2.3,4.2,"normal"), (0,2.29,"düşük"), (4.21,9999,"yüksek")],
+            "thyroid_panel": {
+                "tsh": [(0.4,4.0,"normal"), (4.1,10,"hafif yüksek"), (10.1,9999,"ciddi yüksek")],
+                "ft4": [(0.8,1.8,"normal"), (0,0.79,"düşük"), (1.81,9999,"yüksek")],
+                "ft3": [(2.3,4.2,"normal"), (0,2.29,"düşük"), (4.21,9999,"yüksek")]
+            },
 
-        # Vitamin ve Mineral Paneli
-        "vitamin_d": [(30,100,"normal"), (20,29,"hafif düşük"), (0,19,"ciddi düşük")],
-        "b12": [(200,900,"normal"), (0,199,"düşük"), (901,9999,"yüksek")],
-        "folate": [(3,17,"normal"), (0,2.9,"düşük")],
-        "iron": [(60,170,"normal"), (0,59,"düşük"), (171,9999,"yüksek")],
-        "ferritin": [(30,400,"normal"), (0,29,"düşük"), (401,9999,"yüksek")],
+            "vitamin_minerals": {
+                "vitamin_d": [(30,100,"normal"), (20,29,"hafif düşük"), (0,19,"ciddi düşük")],
+                "b12": [(200,900,"normal"), (0,199,"düşük"), (901,9999,"yüksek")],
+                "folate": [(3,17,"normal"), (0,2.9,"düşük")],
+                "iron": [(60,170,"normal"), (0,59,"düşük"), (171,9999,"yüksek")],
+                "ferritin": [(30,400,"normal"), (0,29,"düşük"), (401,9999,"yüksek")]
+            },
 
-        # Lipid Paneli
-        "cholesterol_total": [(0,200,"normal"), (201,239,"hafif yüksek"), (240,9999,"yüksek")],
-        "ldl": [(0,100,"optimal"), (101,129,"iyi"), (130,159,"sınır yüksek"), (160,189,"yüksek"), (190,9999,"çok yüksek")],
-        "hdl": [(60,9999,"iyi"), (40,59,"orta"), (0,39,"düşük")],
-        "triglycerides": [(0,150,"normal"), (151,199,"hafif yüksek"), (200,499,"yüksek"), (500,9999,"çok yüksek")]
-    },
-    "cardiology":{
-    # Kalp Enzimleri
-        "troponin_i": [
-        (0, 0.04, "normal"),
-        (0.05, 0.39, "hafif yüksek"),
-        (0.40, 9999, "ciddi yüksek")
-        ],
-        "troponin_t": [
-        (0, 0.01, "normal"),
-        (0.02, 0.09, "hafif yüksek"),
-        (0.10, 9999, "ciddi yüksek")
-        ],
-        "ck_mb": [
-        (0, 5, "normal"),
-        (6, 24, "hafif yüksek"),
-        (25, 9999, "ciddi yüksek")
-        ],
-         "myoglobin": [
-        (0, 85, "normal"),
-        (86, 9999, "yüksek")
-        ],
+            "lipid_panel": {
+                "cholesterol_total": [(0,200,"normal"), (201,239,"hafif yüksek"), (240,9999,"yüksek")],
+                "ldl": [(0,100,"optimal"), (101,129,"iyi"), (130,159,"sınır yüksek"), (160,189,"yüksek"), (190,9999,"çok yüksek")],
+                "hdl": [(60,9999,"iyi"), (40,59,"orta"), (0,39,"düşük")],
+                "triglycerides": [(0,150,"normal"), (151,199,"hafif yüksek"), (200,499,"yüksek"), (500,9999,"çok yüksek")]
+            }
+        },
+        "ultrasound": {
+            "liver_size": [(0, 15, "normal"), (15.1, 999, "hepatomegali")],
+            "spleen_size": [(0, 12, "normal"), (12.1, 999, "splenomegali")],
+            "kidney_size": [(9, 12, "normal"), (0, 8.9, "küçük"), (12.1, 999, "büyük")],
+            "gallbladder_wall": [(0, 3, "normal"), (3.1, 999, "kalınlaşma")],
+            "ascites": [(0, 0, "yok"), (1, 999, "var")]
+        },
 
-         # Kalp Yetmezliği Belirteçleri
-        "bnp": [
-        (0, 100, "normal"),
-        (101, 300, "hafif yüksek"),
-        (301, 9999, "ciddi yüksek")
-        ],
-        "nt_pro_bnp": [
-        (0, 125, "normal"),
-        (126, 450, "hafif yüksek"),
-        (451, 9999, "ciddi yüksek")
-        ],
+        "mri": {
+            "liver_fat": [(0, 5, "normal"), (6, 15, "hafif yağlanma"), (16, 999, "ciddi yağlanma")],
+            "iron_load": [(0, 1, "normal"), (2, 4, "hafif"), (5, 999, "yüksek")],
+            "kidney_cysts": [(0, 0, "yok"), (1, 999, "var")],
+            "pancreas_edema": [(0, 0, "yok"), (1, 999, "var")]
+        },
 
-        # Pıhtılaşma ve Tromboz
-        "d_dimer": [
-        (0, 0.5, "normal"),
-        (0.51, 1.0, "hafif yüksek"),
-        (1.01, 9999, "ciddi yüksek")
-        ],
+        "ct": {
+            "lymph_nodes": [(0, 1, "normal"), (2, 999, "büyümüş")],
+            "lung_infiltrates": [(0, 0, "yok"), (1, 999, "var")],
+            "liver_lesions": [(0, 0, "yok"), (1, 999, "var")]
+        },
 
-        # Lipid Paneli (kardiyoloji için yeniden bağlanıyor)
-        "cholesterol_total": [
-        (0, 200, "normal"),
-        (201, 239, "hafif yüksek"),
-        (240, 9999, "yüksek")
-        ],
-        "ldl": [
-        (0, 100, "optimal"),
-        (101, 129, "iyi"),
-        (130, 159, "sınır yüksek"),
-        (160, 189, "yüksek"),
-        (190, 9999, "çok yüksek")
-        ],
-        "hdl": [
-        (60, 9999, "iyi"),
-        (40, 59, "orta"),
-        (0, 39, "düşük")
-        ],
-        "triglycerides": [
-        (0, 150, "normal"),
-        (151, 199, "hafif yüksek"),
-        (200, 499, "yüksek"),
-        (500, 9999, "çok yüksek")
-        ],
+        "clinical": {
+            "symptoms": {
+                "fever": [(0, 0, "yok"), (1, 999, "var")],
+                "fatigue": [(0, 0, "yok"), (1, 999, "var")],
+                "abdominal_pain": [(0, 0, "yok"), (1, 999, "var")]
+            },
 
-         # Kas Enzimleri (kardiyak olmayan ama kardiyolojiye bağlı)
-        "ck_total": [
-        (0, 200, "normal"),
-        (201, 9999, "yüksek")
-        ]
+            "physical_exam": {
+                "hepatomegaly": [(0, 0, "yok"), (1, 999, "var")],
+                "splenomegaly": [(0, 0, "yok"), (1, 999, "var")],
+                "edema": [(0, 0, "yok"), (1, 999, "var")]
+            },
 
+            "vitals": {
+                "heart_rate": [(60, 100, "normal"), (0, 59, "düşük"), (101, 999, "yüksek")],
+                "blood_pressure_sys": [(90, 140, "normal"), (141, 999, "yüksek"), (0, 89, "düşük")],
+                "temperature": [(36, 37.5, "normal"), (37.6, 999, "ateş")]
+            }
+        }
 
     },
-    "endocrinology":{
+    "cardiology": {
+        "lab": {
+            "cardiac_markers": {
+                "troponin_i": [(0,0.04,"normal"), (0.05,0.39,"hafif yüksek"), (0.40,9999,"ciddi yüksek")],
+                "troponin_t": [(0,0.01,"normal"), (0.02,0.09,"hafif yüksek"), (0.10,9999,"ciddi yüksek")],
+                "ck_mb": [(0,5,"normal"), (6,24,"hafif yüksek"), (25,9999,"ciddi yüksek")],
+                "myoglobin": [(0,85,"normal"), (86,9999,"yüksek")]
+            },
 
-     # Tiroid Fonksiyonları
-        "tsh": [
-        (0.4, 4.0, "normal"),
-        (4.1, 10, "hafif yüksek"),
-        (10.1, 9999, "ciddi yüksek")
-        ],
-        "ft4": [
-        (0.8, 1.8, "normal"),
-        (0, 0.79, "düşük"),
-        (1.81, 9999, "yüksek")
-        ],
-        "ft3": [
-        (2.3, 4.2, "normal"),
-        (0, 2.29, "düşük"),
-        (4.21, 9999, "yüksek")
-        ],
+            "heart_failure_markers": {
+                "bnp": [(0,100,"normal"), (101,300,"hafif yüksek"), (301,9999,"ciddi yüksek")],
+                "nt_pro_bnp": [(0,125,"normal"), (126,450,"hafif yüksek"), (451,9999,"ciddi yüksek")]
+            },
 
-        # Diyabet ve Metabolizma
-         "glucose_fasting": [
-        (70, 99, "normal"),
-        (100, 125, "prediyabet"),
-        (126, 9999, "diyabet")
-        ],
-        "glucose_pp": [
-        (70, 140, "normal"),
-        (141, 199, "prediyabet"),
-        (200, 9999, "diyabet")
-        ],
-        "hba1c": [
-        (4.0, 5.6, "normal"),
-        (5.7, 6.4, "prediyabet"),
-        (6.5, 9999, "diyabet")
-         ],
-        "insulin": [
-        (2, 25, "normal"),
-        (26, 9999, "yüksek")
-        ],
-        "homa_ir": [
-        (0, 2, "normal"),
-        (2.1, 2.9, "hafif yüksek"),
-        (3, 9999, "insülin direnci")
-        ],
+            "thrombosis_panel": {
+                "d_dimer": [(0,0.5,"normal"), (0.51,1.0,"hafif yüksek"), (1.01,9999,"ciddi yüksek")]
+            },
 
-        # Adrenal Bez (Böbrek Üstü)
-        "cortisol_morning": [
-        (6, 23, "normal"),
-        (0, 5.9, "düşük"),
-        (24, 9999, "yüksek")
-        ],
-        "acth": [
-        (10, 60, "normal"),
-        (0, 9.9, "düşük"),
-        (61, 9999, "yüksek")
-        ],
-        "dhea_s": [
-        (35, 430, "normal"),
-        (0, 34, "düşük"),
-        (431, 9999, "yüksek")
-        ],
+            "lipid_panel": {
+                "cholesterol_total": [(0,200,"normal"), (201,239,"hafif yüksek"), (240,9999,"yüksek")],
+                "ldl": [(0,100,"optimal"), (101,129,"iyi"), (130,159,"sınır yüksek"), (160,189,"yüksek"), (190,9999,"çok yüksek")],
+                "hdl": [(60,9999,"iyi"), (40,59,"orta"), (0,39,"düşük")],
+                "triglycerides": [(0,150,"normal"), (151,199,"hafif yüksek"), (200,499,"yüksek"), (500,9999,"çok yüksek")]
+            }
+        },
 
-        # Kadın Hormonları
-        "estradiol": [
-        (30, 400, "normal"),
-        (0, 29, "düşük"),
-        (401, 9999, "yüksek")
-        ],
-        "progesterone": [
-        (5, 20, "normal (luteal)"),
-        (0, 4.9, "düşük"),
-        (21, 9999, "yüksek")
-        ],
-        "fsh": [
-        (3, 10, "normal"),
-        (11, 20, "hafif yüksek"),
-        (21, 9999, "ciddi yüksek")
-        ],
-        "lh": [
-        (2, 12, "normal"),
-        (13, 9999, "yüksek")
-        ],
+        "imaging": {
+            "echo": {
+                "ef": [(55,70,"normal"), (41,54,"hafif düşük"), (31,40,"orta düşük"), (0,30,"ciddi düşük")],
+                "lv_mass": [(0,150,"normal"), (151,200,"hafif yüksek"), (201,9999,"yüksek")],
+                "rv_pressure": [(0,35,"normal"), (36,50,"hafif yüksek"), (51,9999,"yüksek")],
+                "wall_motion": [(0,0,"normal"), (1,999,"bozuk")],
+                "mitral_regurgitation": [(0,0,"yok"), (1,1,"hafif"), (2,2,"orta"), (3,999,"ciddi")],
+                "aortic_stenosis": [(0,0,"yok"), (1,1,"hafif"), (2,2,"orta"), (3,999,"ciddi")]
+            },
 
-        # Erkek Hormonları
-        "testosterone_total": [
-        (300, 1000, "normal"),
-        (0, 299, "düşük"),
-        (1001, 9999, "yüksek")
-        ],
-        "testosterone_free": [
-        (5, 25, "normal"),
-        (0, 4.9, "düşük"),
-        (26, 9999, "yüksek")
-        ],
+            "cardiac_mri": {
+                "late_gadolinium_enhancement": [(0, 0, "yok"), (1, 999, "var")],
+                "edema": [(0, 0, "yok"), (1, 999, "var")],
+                "fibrosis": [(0, 0, "yok"), (1, 999, "var")],
+                "rv_function": [(45, 70, "normal"), (30, 44, "hafif düşük"), (0, 29, "ciddi düşük")]
+            },
 
-         # Prolaktin
-        "prolactin": [
-        (4, 15, "normal"),
-        (16, 25, "hafif yüksek"),
-        (26, 9999, "ciddi yüksek")
-         ]
+            "cardiac_ct": {
+                "calcium_score": [(0,10,"normal"), (11,100,"hafif"), (101,400,"orta"), (401,9999,"ciddi")],
+                "stenosis_percent": [(0,20,"normal"), (21,49,"hafif"), (50,69,"orta"), (70,999,"ciddi")]
+            }
+        },
+
+    "clinical": {
+        "ekg": {
+            "st_elevation": [(0,0,"yok"), (1,999,"var")],
+            "st_depression": [(0,0,"yok"), (1,999,"var")],
+            "qrs_width": [(70,110,"normal"), (111,140,"geniş"), (141,999,"çok geniş")],
+            "pr_interval": [(120,200,"normal"), (201,999,"uzamış")],
+            "qt_interval": [(350,450,"normal"), (451,999,"uzamış")],
+            "rhythm": [(0,0,"sinüs"), (1,999,"aritmi")]
+        },
+
+        "holter": {
+            "pvc_count": [(0, 100, "normal"), (101, 1000, "hafif"), (1001, 9999, "yüksek")],
+            "pac_count": [(0, 100, "normal"), (101, 9999, "yüksek")],
+            "af_burden": [(0, 0, "yok"), (1, 10, "hafif"), (11, 999, "yüksek")],
+            "longest_pause": [(0, 2, "normal"), (3, 999, "uzun")]
+        },
+
+        "symptoms": {
+            "chest_pain": [(0,0,"yok"), (1,999,"var")],
+            "dyspnea": [(0,0,"yok"), (1,999,"var")],
+            "palpitation": [(0,0,"yok"), (1,999,"var")],
+            "syncope": [(0,0,"yok"), (1,999,"var")]
+        }
+    }
 
 
     },
 
-    "hematology":{
+    "endocrinology": {
+        "lab": {
 
-        # Beyaz Kan Hücreleri (Enfeksiyon / Lösemi)
-        "wbc": [
-        (4.0, 11.0, "normal"),
-        (11.1, 15.0, "hafif yüksek"),
-        (15.1, 9999, "ciddi yüksek"),
-        (0, 3.9, "düşük")
-        ],
+            "thyroid_panel": {
+                "tsh": [(0.4,4.0,"normal"), (4.1,10,"hafif yüksek"), (10.1,9999,"ciddi yüksek")],
+                "ft4": [(0.8,1.8,"normal"), (0,0.79,"düşük"), (1.81,9999,"yüksek")],
+                "ft3": [(2.3,4.2,"normal"), (0,2.29,"düşük"), (4.21,9999,"yüksek")]
+            },
 
-        # Kırmızı Kan Hücreleri
-        "rbc": [
-        (4.5, 6.0, "normal"),
-        (0, 4.49, "düşük"),
-        (6.01, 9999, "yüksek")
-        ],
+            "diabetes_panel": {
+                "glucose_fasting": [(70,99,"normal"), (100,125,"prediyabet"), (126,9999,"diyabet")],
+                "glucose_pp": [(70,140,"normal"), (141,199,"prediyabet"), (200,9999,"diyabet")],
+                "hba1c": [(4.0,5.6,"normal"), (5.7,6.4,"prediyabet"), (6.5,9999,"diyabet")],
+                "insulin": [(2,25,"normal"), (26,9999,"yüksek")],
+                "homa_ir": [(0,2,"normal"), (2.1,2.9,"hafif yüksek"), (3,9999,"insülin direnci")]
+            },
 
-        # Hemoglobin
-        "hgb": [
-        (13.5, 17.5, "normal"),
-        (0, 13.49, "düşük"),
-        (17.6, 9999, "yüksek")
-        ],
+            "adrenal_panel": {
+                "cortisol_morning": [(6,23,"normal"), (0,5.9,"düşük"), (24,9999,"yüksek")],
+                "acth": [(10,60,"normal"), (0,9.9,"düşük"), (61,9999,"yüksek")],
+                "dhea_s": [(35,430,"normal"), (0,34,"düşük"), (431,9999,"yüksek")]
+            },
 
-        # Hematokrit
-        "hct": [
-        (38, 50, "normal"),
-        (0, 37.9, "düşük"),
-        (50.1, 9999, "yüksek")
-        ],
+            "gonadal_panel": {
+                "estradiol": [(30,400,"normal"), (0,29,"düşük"), (401,9999,"yüksek")],
+                "progesterone": [(5,20,"normal (luteal)"), (0,4.9,"düşük"), (21,9999,"yüksek")],
+                "fsh": [(3,10,"normal"), (11,20,"hafif yüksek"), (21,9999,"ciddi yüksek")],
+                "lh": [(2,12,"normal"), (13,9999,"yüksek")],
+                "testosterone_total": [(300,1000,"normal"), (0,299,"düşük"), (1001,9999,"yüksek")],
+                "testosterone_free": [(5,25,"normal"), (0,4.9,"düşük"), (26,9999,"yüksek")]
+            },
 
-        # Trombositler
-        "plt": [
-        (150, 450, "normal"),
-        (0, 149, "düşük"),
-        (451, 9999, "yüksek")
-        ],
+            "prolactin_panel": {
+                "prolactin": [(4,15,"normal"), (16,25,"hafif yüksek"), (26,9999,"ciddi yüksek")]
+            }
+        },
 
-         # RDW (Kırmızı Hücre Dağılım Genişliği)
-        "rdw": [
-        (11.5, 14.5, "normal"),
-        (14.6, 9999, "yüksek")
-        ],
+        "imaging": {
+            "thyroid_ultrasound": {
+                "thyroid_size": [(0,25,"normal"), (26,999,"büyük")],
+                "nodule_count": [(0,0,"yok"), (1,999,"var")],
+                "nodule_size": [(0,1,"küçük"), (1.1,3,"orta"), (3.1,999,"büyük")],
+                "vascularity": [(0,0,"normal"), (1,999,"artmış")]
+            },
 
-        # MCV (Ortalama Eritrosit Hacmi)
-        "mcv": [
-        (80, 100, "normal"),
-        (0, 79, "mikrositik"),
-        (101, 9999, "makrositik")
-        ],
+            "adrenal_imaging": {
+                "adrenal_mass": [(0,0,"yok"), (1,999,"var")],
+                "mass_size": [(0,1,"küçük"), (1.1,4,"orta"), (4.1,999,"büyük")],
+                "fat_content": [(0,10,"normal"), (11,999,"yüksek")],
+                "pheochromocytoma_signs": [(0,0,"yok"), (1,999,"var")]
+            }
+        },
 
-        # MCH (Ortalama Hemoglobin İçeriği)
-        "mch": [
-        (27, 33, "normal"),
-        (0, 26.9, "düşük"),
-        (33.1, 9999, "yüksek")
-        ],
+        "clinical": {
+            "symptoms": {
+                "fatigue": [(0,0,"yok"), (1,999,"var")],
+                "weight_gain": [(0,0,"yok"), (1,999,"var")],
+                "weight_loss": [(0,0,"yok"), (1,999,"var")],
+                "palpitation": [(0,0,"yok"), (1,999,"var")],
+                "polyuria": [(0,0,"yok"), (1,999,"var")],
+                "polydipsia": [(0,0,"yok"), (1,999,"var")]
+            },
 
-        # MCHC (Hemoglobin Konsantrasyonu)
-        "mchc": [
-        (32, 36, "normal"),
-        (0, 31.9, "düşük"),
-        (36.1, 9999, "yüksek")
-        ],
+            "physical_exam": {
+                "goiter": [(0,0,"yok"), (1,999,"var")],
+                "acanthosis_nigricans": [(0,0,"yok"), (1,999,"var")],
+                "hirsutism": [(0,0,"yok"), (1,999,"var")]
+            },
 
-        # Pıhtılaşma Testleri
-        "inr": [
-        (0.8, 1.2, "normal"),
-        (1.3, 2.0, "hafif yüksek"),
-        (2.1, 9999, "ciddi yüksek")
-        ],
-        "aptt": [
-        (25, 35, "normal"),
-        (36, 9999, "uzamış")
-        ],
-        "fibrinogen": [
-        (200, 400, "normal"),
-        (0, 199, "düşük"),
-        (401, 9999, "yüksek")
-        ],
-
-         # Demir Paneli
-        "iron": [
-        (60, 170, "normal"),
-        (0, 59, "düşük"),
-        (171, 9999, "yüksek")
-        ],
-        "tibc": [
-        (250, 450, "normal"),
-        (451, 9999, "yüksek"),
-        (0, 249, "düşük")
-        ],
-        "ferritin": [
-        (30, 400, "normal"),
-        (0, 29, "düşük"),
-        (401, 9999, "yüksek")
-        ],
-
-        # B12 ve Folat (Anemi değerlendirmesi)
-        "b12": [
-        (200, 900, "normal"),
-        (0, 199, "düşük"),
-        (901, 9999, "yüksek")
-        ],
-        "folate": [
-        (3, 17, "normal"),
-        (0, 2.9, "düşük")
-        ]
-
+            "risk_scores": {
+                "diabetes_risk": [(0,5,"düşük"), (6,10,"orta"), (11,999,"yüksek")],
+                "thyroid_risk": [(0,3,"düşük"), (4,6,"orta"), (7,999,"yüksek")]
+            }
+        }
 
     },
+
+    "hematology": {
+        "lab": {
+
+            "cbc": {
+                "wbc": [(4.0,11.0,"normal"), (11.1,15.0,"hafif yüksek"), (15.1,9999,"ciddi yüksek"), (0,3.9,"düşük")],
+                "rbc": [(4.5,6.0,"normal"), (0,4.49,"düşük"), (6.01,9999,"yüksek")],
+                "hgb": [(13.5,17.5,"normal"), (0,13.49,"düşük"), (17.6,9999,"yüksek")],
+                "hct": [(38,50,"normal"), (0,37.9,"düşük"), (50.1,9999,"yüksek")],
+                "plt": [(150,450,"normal"), (0,149,"düşük"), (451,9999,"yüksek")],
+                "rdw": [(11.5,14.5,"normal"), (14.6,9999,"yüksek")],
+                "mcv": [(80,100,"normal"), (0,79,"mikrositik"), (101,9999,"makrositik")],
+                "mch": [(27,33,"normal"), (0,26.9,"düşük"), (33.1,9999,"yüksek")],
+                "mchc": [(32,36,"normal"), (0,31.9,"düşük"), (36.1,9999,"yüksek")]
+            },
+
+            "coagulation": {
+                "inr": [(0.8,1.2,"normal"), (1.3,2.0,"hafif yüksek"), (2.1,9999,"ciddi yüksek")],
+                "aptt": [(25,35,"normal"), (36,9999,"uzamış")],
+                "fibrinogen": [(200,400,"normal"), (0,199,"düşük"), (401,9999,"yüksek")]
+            },
+
+            "iron_panel": {
+                "iron": [(60,170,"normal"), (0,59,"düşük"), (171,9999,"yüksek")],
+                "tibc": [(250,450,"normal"), (451,9999,"yüksek"), (0,249,"düşük")],
+                "ferritin": [(30,400,"normal"), (0,29,"düşük"), (401,9999,"yüksek")]
+            },
+
+            "b12_folate": {
+                "b12": [(200,900,"normal"), (0,199,"düşük"), (901,9999,"yüksek")],
+                "folate": [(3,17,"normal"), (0,2.9,"düşük")]
+            },
+
+            "inflammation": {
+                "crp": [(0,5,"normal"), (6,20,"hafif yüksek"), (21,50,"orta yüksek"), (50,9999,"ciddi yüksek")],
+                "esr": [(0,20,"normal"), (21,50,"hafif yüksek"), (51,9999,"yüksek")],
+                "procalcitonin": [(0,0.5,"normal"), (0.51,2,"orta"), (2.1,9999,"ciddi yüksek")]
+            }
+        },
+
+        "imaging": {
+            "ultrasound": {
+                "spleen_size": [(0,12,"normal"), (12.1,999,"splenomegali")],
+                "liver_size": [(0,15,"normal"), (15.1,999,"hepatomegali")],
+                "lymph_nodes": [(0,0,"normal"), (1,999,"büyümüş")]
+            },
+
+            "ct_mri": {
+                "lymphadenopathy": [(0,0,"yok"), (1,999,"var")],
+                "bone_marrow_infiltration": [(0,0,"yok"), (1,999,"var")],
+                "splenic_infarct": [(0,0,"yok"), (1,999,"var")]
+            }
+        },
+
+        "clinical": {
+            "symptoms": {
+                "fatigue": [(0,0,"yok"), (1,999,"var")],
+                "pallor": [(0,0,"yok"), (1,999,"var")],
+                "fever": [(0,0,"yok"), (1,999,"var")],
+                "night_sweats": [(0,0,"yok"), (1,999,"var")],
+                "weight_loss": [(0,0,"yok"), (1,999,"var")]
+            },
+
+            "physical_exam": {
+                "lymph_nodes": [(0, 0, "normal"), (1, 999, "büyümüş")],
+                "splenomegaly": [(0, 0, "yok"), (1, 999, "var")],
+                "hepatomegaly": [(0, 0, "yok"), (1, 999, "var")],
+                "petechiae": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "risk_scores": {
+                "anemia_risk": [(0,5,"düşük"), (6,10,"orta"), (11,999,"yüksek")],
+                "leukemia_risk": [(0,3,"düşük"), (4,6,"orta"), (7,999,"yüksek")]
+            }
+        }
+
+    },
+
 
     "infectious_disease":{
 
-        # Prokalsitonin (Sepsis göstergesi)
-        "procalcitonin": [
-        (0, 0.1, "normal"),
-        (0.11, 0.5, "hafif yüksek"),
-        (0.51, 2.0, "orta yüksek"),
-        (2.01, 9999, "ciddi yüksek (sepsis şüphesi)")
-        ],
+        "lab": {
 
-        # CRP (C-Reaktif Protein)
-        "crp": [
-        (0, 5, "normal"),
-        (6, 20, "hafif yüksek"),
-        (21, 50, "orta yüksek"),
-        (51, 9999, "ciddi yüksek")
-        ],
+            "infection_panel": {
+                "wbc": [(4.0, 11.0, "normal"), (11.1, 15.0, "hafif yüksek"), (15.1, 9999, "ciddi yüksek"),
+                        (0, 3.9, "düşük")],
+                "neutrophils_percent": [(40, 70, "normal"), (71, 90, "yüksek"), (0, 39, "düşük")],
+                "lymphocytes_percent": [(20, 40, "normal"), (0, 19, "düşük"), (41, 999, "yüksek")],
+                "crp": [(0, 5, "normal"), (6, 20, "hafif yüksek"), (21, 50, "orta yüksek"), (51, 9999, "ciddi yüksek")],
+                "esr": [(0, 20, "normal"), (21, 50, "hafif yüksek"), (51, 9999, "yüksek")],
+                "procalcitonin": [(0, 0.5, "normal"), (0.51, 2, "orta"), (2.1, 9999, "ciddi yüksek")]
+            },
 
-        # ESR (Sedimantasyon)
-        "esr": [
-        (0, 20, "normal"),
-        (21, 40, "hafif yüksek"),
-        (41, 9999, "yüksek")
-        ],
+            "sepsis_panel": {
+                "lactate": [(0, 2, "normal"), (2.1, 4, "orta"), (4.1, 9999, "ciddi yüksek")],
+                "platelets": [(150, 450, "normal"), (0, 149, "düşük"), (451, 9999, "yüksek")],
+                "bilirubin": [(0, 1.2, "normal"), (1.3, 3, "hafif yüksek"), (3.1, 9999, "yüksek")]
+            },
 
-        # Laktat (Sepsis / hipoperfüzyon)
-        "lactate": [
-        (0.5, 2.0, "normal"),
-        (2.1, 4.0, "hafif yüksek"),
-        (4.1, 9999, "ciddi yüksek (laktik asidoz)")
-        ],
+            "viral_panel": {
+                "alt": [(0, 40, "normal"), (41, 100, "hafif yüksek"), (101, 9999, "yüksek")],
+                "ast": [(0, 40, "normal"), (41, 100, "hafif yüksek"), (101, 9999, "yüksek")],
+                "ldh": [(140, 280, "normal"), (281, 9999, "yüksek")]
+            }
+        },
 
-        # Ferritin (inflamasyon / enfeksiyon / sitokin fırtınası)
-        "ferritin": [
-        (30, 400, "normal"),
-        (401, 1000, "hafif yüksek"),
-        (1001, 9999, "ciddi yüksek (hiperinflamasyon)")
-         ],
+        "imaging": {
 
-        # D-dimer (pıhtılaşma / enfeksiyon / emboli)
-        "d_dimer": [
-        (0, 0.5, "normal"),
-        (0.51, 1.0, "hafif yüksek"),
-        (1.01, 9999, "ciddi yüksek")
-        ],
+            "chest_imaging": {
+                "chest_xray_infiltrates": [(0, 0, "yok"), (1, 999, "var")],
+                "ct_ground_glass": [(0, 0, "yok"), (1, 999, "var")],
+                "pleural_effusion": [(0, 0, "yok"), (1, 999, "var")]
+            },
 
-        # WBC (hematoloji ile bağlantılı)
-         "wbc": [
-        (4.0, 11.0, "normal"),
-        (11.1, 15.0, "hafif yüksek"),
-        (15.1, 9999, "ciddi yüksek"),
-        (0, 3.9, "düşük")
-         ],
+            "abdominal_imaging": {
+                "abscess": [(0, 0, "yok"), (1, 999, "var")],
+                "organ_enlargement": [(0, 0, "yok"), (1, 999, "var")]
+            }
+        },
 
-        # Lenfosit (viral enfeksiyon göstergesi)
-        "lymphocytes": [
-        (1.0, 3.0, "normal"),
-        (0, 0.99, "düşük (viral enfeksiyon?)"),
-        (3.01, 9999, "yüksek")
-        ],
+        "clinical": {
 
-        # Nötrofil (bakteriyel enfeksiyon göstergesi)
-        "neutrophils": [
-        (2.0, 7.0, "normal"),
-        (7.1, 9999, "yüksek (bakteriyel enfeksiyon?)"),
-        (0, 1.99, "düşük")
-        ]
+            "symptoms": {
+                "fever": [(0, 0, "yok"), (1, 999, "var")],
+                "chills": [(0, 0, "yok"), (1, 999, "var")],
+                "cough": [(0, 0, "yok"), (1, 999, "var")],
+                "dyspnea": [(0, 0, "yok"), (1, 999, "var")],
+                "abdominal_pain": [(0, 0, "yok"), (1, 999, "var")],
+                "diarrhea": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "physical_exam": {
+                "tachycardia": [(0, 0, "yok"), (1, 999, "var")],
+                "hypotension": [(0, 0, "yok"), (1, 999, "var")],
+                "rash": [(0, 0, "yok"), (1, 999, "var")],
+                "lymphadenopathy": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "risk_scores": {
+                "sepsis_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")],
+                "pneumonia_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")]
+            }
+        }
     },
 
-    "nephrology":{
+    "nephrology": {
+        "lab": {
 
-        # Böbrek Fonksiyonları
-        "urea": [
-        (10, 50, "normal"),
-        (51, 100, "hafif yüksek"),
-        (101, 9999, "ciddi yüksek")
-        ],
-        "creatinine": [
-        (0.6, 1.3, "normal"),
-        (1.4, 2.0, "hafif yüksek"),
-        (2.1, 9999, "ciddi yüksek")
-        ],
-        "gfr": [
-        (90, 9999, "normal"),
-        (60, 89, "evre 2 böbrek hastalığı"),
-        (30, 59, "evre 3 böbrek hastalığı"),
-        (15, 29, "evre 4 böbrek hastalığı"),
-        (0, 14, "evre 5 (son dönem böbrek yetmezliği)")
-         ],
+            "kidney_panel": {
+                "urea": [(10,50,"normal"), (51,100,"hafif yüksek"), (101,9999,"yüksek")],
+                "creatinine": [(0.6,1.3,"normal"), (1.4,2.0,"hafif yüksek"), (2.1,9999,"yüksek")],
+                "gfr": [(90,9999,"normal"), (60,89,"hafif düşük"), (30,59,"orta düşük"), (0,29,"ciddi düşük")]
+            },
 
-        # Elektrolitler (Böbrek ile çok ilişkili)
-        "sodium": [
-        (135, 145, "normal"),
-        (146, 160, "yüksek"),
-        (0, 134, "düşük")
-        ],
-        "potassium": [
-        (3.5, 5.0, "normal"),
-        (5.1, 6.0, "hafif yüksek"),
-        (6.1, 9999, "ciddi yüksek (hiperkalemi)")
-        ],
-        "chloride": [
-        (98, 106, "normal"),
-        (107, 120, "yüksek"),
-        (0, 97, "düşük")
-        ],
-        "calcium": [
-        (8.5, 10.5, "normal"),
-        (10.6, 12, "hafif yüksek"),
-        (12.1, 9999, "ciddi yüksek")
-        ],
-        "phosphorus": [
-        (2.5, 4.5, "normal"),
-        (4.6, 9999, "yüksek"),
-        (0, 2.4, "düşük")
-        ],
-        "magnesium": [
-        (1.7, 2.2, "normal"),
-        (2.3, 9999, "yüksek"),
-        (0, 1.6, "düşük")
-        ],
+            "electrolytes": {
+                "sodium": [(135,145,"normal"), (146,160,"yüksek"), (0,134,"düşük")],
+                "potassium": [(3.5,5.0,"normal"), (5.1,6.0,"hafif yüksek"), (6.1,9999,"ciddi yüksek")],
+                "chloride": [(98,106,"normal"), (107,120,"yüksek"), (0,97,"düşük")],
+                "calcium": [(8.5,10.5,"normal"), (10.6,12,"hafif yüksek"), (12.1,9999,"ciddi yüksek")],
+                "phosphorus": [(2.5,4.5,"normal"), (4.6,9999,"yüksek"), (0,2.4,"düşük")],
+                "magnesium": [(1.7,2.2,"normal"), (2.3,9999,"yüksek"), (0,1.6,"düşük")]
+            },
 
-         # İdrar Testleri
-        "urine_protein": [
-        (0, 150, "normal"),
-        (151, 300, "hafif proteinüri"),
-        (301, 9999, "ciddi proteinüri (nefrotik aralık)")
-        ],
-        "urine_albumin": [
-        (0, 30, "normal"),
-        (31, 300, "mikroalbüminüri"),
-        (301, 9999, "makroalbüminüri")
-        ],
-        "urine_creatinine": [
-        (20, 320, "normal"),
-        (0, 19, "düşük"),
-        (321, 9999, "yüksek")
-        ],
+            "urine_tests": {
+                "urine_protein": [(0,150,"normal"), (151,300,"hafif proteinüri"), (301,9999,"nefrotik aralık")],
+                "urine_albumin": [(0,30,"normal"), (31,300,"mikroalbüminüri"), (301,9999,"makroalbüminüri")],
+                "acr": [(0,30,"normal"), (31,300,"mikroalbüminüri"), (301,9999,"makroalbüminüri")],
+                "urine_creatinine": [(20,320,"normal"), (0,19,"düşük"), (321,9999,"yüksek")]
+            },
 
-        # Albümin / Kreatinin Oranı (ACR)
-        "acr": [
-        (0, 30, "normal"),
-        (31, 300, "mikroalbüminüri"),
-        (301, 9999, "makroalbüminüri")
-        ],
+            "acid_base": {
+                "blood_ph": [(7.35,7.45,"normal"), (0,7.34,"asidoz"), (7.46,9999,"alkaloz")],
+                "hco3": [(22,26,"normal"), (0,21.9,"düşük"), (26.1,9999,"yüksek")]
+            }
+        },
 
-        # Kan pH (böbrek asit-baz dengesi)
-        "blood_ph": [
-        (7.35, 7.45, "normal"),
-        (0, 7.34, "asidoz"),
-        (7.46, 9999, "alkaloz")
-        ],
+        "imaging": {
+            "kidney_ultrasound": {
+                "kidney_size": [(9,12,"normal"), (0,8.9,"küçük"), (12.1,999,"büyük")],
+                "cortical_thickness": [(6,10,"normal"), (0,5.9,"azalmış")],
+                "hydronephrosis": [(0,0,"yok"), (1,1,"hafif"), (2,2,"orta"), (3,999,"ciddi")],
+                "renal_cysts": [(0,0,"yok"), (1,999,"var")],
+                "stones": [(0,0,"yok"), (1,999,"var")]
+            },
 
-        # Bikarbonat (HCO3)
-        "hco3": [
-        (22, 26, "normal"),
-        (0, 21.9, "düşük (metabolik asidoz)"),
-        (26.1, 9999, "yüksek (metabolik alkaloz)")
-        ]
+            "ct_mri": {
+                "renal_mass": [(0,0,"yok"), (1,999,"var")],
+                "perirenal_fluid": [(0,0,"yok"), (1,999,"var")],
+                "renal_artery_stenosis": [(0,0,"yok"), (1,999,"var")]
+            }
+        },
 
+        "clinical": {
+            "symptoms": {
+                "edema": [(0,0,"yok"), (1,999,"var")],
+                "fatigue": [(0,0,"yok"), (1,999,"var")],
+                "nausea": [(0,0,"yok"), (1,999,"var")],
+                "decreased_urine": [(0,0,"yok"), (1,999,"var")],
+                "flank_pain": [(0,0,"yok"), (1,999,"var")]
+            },
+
+            "physical_exam": {
+                "hypertension": [(0, 0, "yok"), (1, 999, "var")],
+                "pitting_edema": [(0, 0, "yok"), (1, 999, "var")],
+                "renal_bruit": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "risk_scores": {
+                "ckd_risk": [(0,5,"düşük"), (6,10,"orta"), (11,999,"yüksek")],
+                "aki_risk": [(0,5,"düşük"), (6,10,"orta"), (11,999,"yüksek")]
+            }
+        }
     },
 
     "hepatology": {
-        # ALT (SGPT)
-        "alt": [
-        (0, 40, "normal"),
-        (41, 100, "hafif yüksek"),
-        (101, 300, "orta yüksek"),
-        (301, 9999, "ciddi yüksek (akut hasar?)")
-        ],
+        "lab": {
 
-        # AST (SGOT)
-        "ast": [
-        (0, 40, "normal"),
-        (41, 100, "hafif yüksek"),
-        (101, 300, "orta yüksek"),
-        (301, 9999, "ciddi yüksek (akut hasar?)")
-        ],
+            "liver_panel": {
+                "alt": [(0,40,"normal"), (41,100,"hafif yüksek"), (101,300,"orta yüksek"), (301,9999,"ciddi yüksek")],
+                "ast": [(0,40,"normal"), (41,100,"hafif yüksek"), (101,300,"orta yüksek"), (301,9999,"ciddi yüksek")],
+                "ggt": [(0,60,"normal"), (61,200,"hafif yüksek"), (201,9999,"ciddi yüksek")],
+                "alp": [(40,130,"normal"), (131,300,"hafif yüksek"), (301,9999,"ciddi yüksek")],
+                "tot_bilirubin": [(0,1.2,"normal"), (1.3,3,"hafif yüksek"), (3.1,9999,"ciddi yüksek")],
+                "direct_bilirubin": [(0,0.3,"normal"), (0.4,1,"hafif yüksek"), (1.1,9999,"ciddi yüksek")],
+                "albumin": [(3.5,5.5,"normal"), (0,3.49,"düşük")],
+                "inr": [(0.8,1.2,"normal"), (1.3,1.5,"hafif yüksek"), (1.6,9999,"ciddi yüksek")],
+                "ammonia": [(15,45,"normal"), (46,80,"hafif yüksek"), (81,9999,"ciddi yüksek")]
+            },
 
-        # GGT (Kolestaz göstergesi)
-        "ggt": [
-        (0, 60, "normal"),
-        (61, 200, "hafif yüksek"),
-        (201, 9999, "ciddi yüksek (kolestaz?)")
-        ],
+            "viral_hepatitis_panel": {
+                "hbsag": [(0,0,"negatif"), (1,999,"pozitif")],
+                "anti_hbs": [(10,9999,"koruyucu"), (0,9,"düşük")],
+                "anti_hbc": [(0,0,"negatif"), (1,999,"pozitif")],
+                "hbeag": [(0,0,"negatif"), (1,999,"pozitif")],
+                "anti_hcv": [(0,0,"negatif"), (1,999,"pozitif")],
+                "hcv_rna": [(0,0,"negatif"), (1,999,"pozitif")]
+            },
 
-        # Alkalen Fosfataz (ALP)
-        "alp": [
-        (40, 130, "normal"),
-        (131, 300, "hafif yüksek"),
-        (301, 9999, "ciddi yüksek (kolestaz?)")
-        ],
+            "autoimmune_panel": {
+                "ana": [(0,0,"negatif"), (1,999,"pozitif")],
+                "asma": [(0,0,"negatif"), (1,999,"pozitif")],
+                "ama": [(0,0,"negatif"), (1,999,"pozitif")],
+                "anti_lkm": [(0,0,"negatif"), (1,999,"pozitif")]
+            },
 
-        # Total Bilirubin
-        "bilirubin_total": [
-        (0, 1.2, "normal"),
-        (1.3, 3.0, "hafif yüksek"),
-        (3.1, 9999, "ciddi yüksek (sarılık)")
-        ],
+            "fibrosis_markers": {
+                "fib4": [(0,1.3,"düşük risk"), (1.31,2.67,"orta risk"), (2.68,9999,"yüksek risk")],
+                "apri": [(0,0.5,"düşük"), (0.51,1.5,"orta"), (1.51,9999,"yüksek")]
+            }
+        },
 
-        # Direct Bilirubin
-        "bilirubin_direct": [
-        (0, 0.3, "normal"),
-        (0.4, 1.0, "hafif yüksek"),
-        (1.1, 9999, "ciddi yüksek")
-        ]
-    },
+        "imaging": {
+            "ultrasound": {
+                "liver_size": [(0,15,"normal"), (15.1,999,"hepatomegali")],
+                "fatty_liver": [(0,0,"yok"), (1,1,"hafif"), (2,2,"orta"), (3,999,"ciddi")],
+                "splenomegaly": [(0,12,"normal"), (12.1,999,"splenomegali")],
+                "ascites": [(0,0,"yok"), (1,999,"var")],
+                "portal_vein_diameter": [(0,13,"normal"), (13.1,999,"geniş")]
+            },
 
-    "gastroenterology":{
+            "elastography": {
+                "liver_stiffness_kpa": [(0, 7, "F0-F1"), (7.1, 9.5, "F2"), (9.6, 12.5, "F3"),
+                                        (12.6, 999, "F4 (siroz)")],
+                "cap_score": [(0, 238, "S0"), (239, 259, "S1"), (260, 289, "S2"), (290, 999, "S3")]
+            },
 
-        # Pankreas Enzimleri
-        "amylase": [
-        (30, 110, "normal"),
-        (111, 300, "hafif yüksek"),
-        (301, 9999, "ciddi yüksek (pankreatit?)")
-        ],
-        "lipase": [
-        (0, 160, "normal"),
-        (161, 400, "hafif yüksek"),
-        (401, 9999, "ciddi yüksek (pankreatit için daha spesifik)")
-        ],
+            "ct_mri": {
+                "liver_lesions": [(0,0,"yok"), (1,999,"var")],
+                "portal_hypertension": [(0,0,"yok"), (1,999,"var")],
+                "varices": [(0,0,"yok"), (1,999,"var")],
+                "hepatocellular_carcinoma": [(0,0,"yok"), (1,999,"var")]
+            }
+        },
 
-        # Fekal Kalprotektin (IBD göstergesi)
-        "fecal_calprotectin": [
-        (0, 50, "normal"),
-        (51, 200, "hafif yüksek (IBS?)"),
-        (201, 9999, "ciddi yüksek (IBD / Crohn / ÜK?)")
-        ],
+        "clinical": {
+            "symptoms": {
+                "jaundice": [(0,0,"yok"), (1,999,"var")],
+                "itching": [(0,0,"yok"), (1,999,"var")],
+                "fatigue": [(0,0,"yok"), (1,999,"var")],
+                "abdominal_distension": [(0,0,"yok"), (1,999,"var")],
+                "confusion": [(0,0,"yok"), (1,999,"var")]  # ensefalopati
+            },
 
-        # Fekal Gizli Kan (Gastrointestinal kanama)
-        "fecal_occult_blood": [
-        (0, 0, "negatif"),
-        (1, 9999, "pozitif (GİS kanama?)")
-        ],
+            "physical_exam": {
+                "hepatomegaly": [(0, 0, "yok"), (1, 999, "var")],
+                "splenomegaly": [(0, 0, "yok"), (1, 999, "var")],
+                "ascites": [(0, 0, "yok"), (1, 999, "var")],
+                "spider_angio": [(0, 0, "yok"), (1, 999, "var")],
+                "palmar_erythema": [(0, 0, "yok"), (1, 999, "var")]
+            },
 
-        # Fekal Elastaz (Pankreas yetmezliği)
-        "fecal_elastase": [
-        (200, 500, "normal"),
-        (100, 199, "hafif düşük (hafif pankreas yetmezliği)"),
-        (0, 99, "ciddi düşük (ekzokrin pankreas yetmezliği)")
-        ],
-
-        # Gastrin (Zollinger-Ellison sendromu / gastrit)
-        "gastrin": [
-        (0, 100, "normal"),
-        (101, 500, "hafif yüksek"),
-        (501, 9999, "ciddi yüksek (Zollinger-Ellison?)")
-        ],
-
-        # Helicobacter pylori Antijen (peptik ülser)
-        "h_pylori_antigen": [
-        (0, 0, "negatif"),
-        (1, 9999, "pozitif (H. pylori enfeksiyonu)")
-         ],
-
-        # Fekal pH (malabsorpsiyon / enfeksiyon)
-        "fecal_ph": [
-        (6.5, 7.5, "normal"),
-        (0, 6.4, "asit (malabsorpsiyon?)"),
-        (7.6, 9999, "alkali (enfeksiyon?)")
-        ],
-
-        # Fekal Yağ (steatore)
-        "fecal_fat": [
-        (0, 7, "normal"),
-        (8, 14, "hafif yüksek"),
-        (15, 9999, "ciddi yüksek (malabsorpsiyon / pankreas yetmezliği)")
-        ]
-
+            "risk_scores": {
+                "child_pugh": [(5,6,"A (iyi)"), (7,9,"B (orta)"), (10,15,"C (kötü)")],
+                "meld": [(0,10,"düşük"), (11,20,"orta"), (21,999,"yüksek")]
+            }
+        }
 
     },
+
+
+    "gastroenterology": {
+        "lab": {
+
+            "pancreas_panel": {
+                "amylase": [(30,110,"normal"), (111,300,"hafif yüksek"), (301,9999,"ciddi yüksek")],
+                "lipase": [(0,160,"normal"), (161,400,"hafif yüksek"), (401,9999,"ciddi yüksek")],
+                "trypsin": [(0,310,"normal"), (311,9999,"yüksek")]
+            },
+
+            "ibd_panel": {
+                "fecal_calprotectin": [(0,50,"normal"), (51,200,"hafif yüksek"), (201,9999,"ciddi yüksek")],
+                "crp": [(0,5,"normal"), (6,20,"hafif yüksek"), (21,9999,"yüksek")],
+                "esr": [(0,20,"normal"), (21,50,"hafif yüksek"), (51,9999,"yüksek")]
+            },
+
+            "malabsorption_panel": {
+                "fecal_fat": [(0,7,"normal"), (8,14,"hafif yüksek"), (15,9999,"ciddi yüksek")],
+                "fecal_elastase": [(200,500,"normal"), (100,199,"hafif düşük"), (0,99,"ciddi düşük")],
+                "vitamin_b12": [(200,900,"normal"), (0,199,"düşük")],
+                "folate": [(3,17,"normal"), (0,2.9,"düşük")]
+            },
+
+            "ulcer_panel": {
+                "h_pylori_antigen": [(0,0,"negatif"), (1,999,"pozitif")],
+                "gastrin": [(0,100,"normal"), (101,500,"hafif yüksek"), (501,9999,"ciddi yüksek")]
+            },
+
+            "gi_bleeding_panel": {
+                "fecal_occult_blood": [(0,0,"negatif"), (1,999,"pozitif")],
+                "hemoglobin": [(13.5,17.5,"normal"), (0,13.49,"düşük")]
+            }
+        },
+
+        "imaging": {
+            "ultrasound": {
+                "liver_fat": [(0,0,"yok"), (1,1,"hafif"), (2,2,"orta"), (3,999,"ciddi")],
+                "gallbladder_wall": [(0,3,"normal"), (3.1,999,"kalınlaşma")],
+                "bile_duct_diameter": [(0,6,"normal"), (6.1,999,"geniş")],
+                "pancreas_edema": [(0,0,"yok"), (1,999,"var")],
+                "ascites": [(0,0,"yok"), (1,999,"var")]
+            },
+
+            "ct": {
+                "appendicitis": [(0, 0, "yok"), (1, 999, "var")],
+                "diverticulitis": [(0, 0, "yok"), (1, 999, "var")],
+                "bowel_thickening": [(0, 0, "yok"), (1, 999, "var")],
+                "pancreatitis_signs": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "mri": {
+                "liver_iron": [(0,1,"normal"), (2,4,"hafif"), (5,999,"yüksek")],
+                "pancreas_atrophy": [(0,0,"yok"), (1,999,"var")],
+                "bile_duct_obstruction": [(0,0,"yok"), (1,999,"var")]
+            }
+        },
+
+        "clinical": {
+            "symptoms": {
+                "abdominal_pain": [(0,0,"yok"), (1,999,"var")],
+                "diarrhea": [(0,0,"yok"), (1,999,"var")],
+                "constipation": [(0,0,"yok"), (1,999,"var")],
+                "bloody_stool": [(0,0,"yok"), (1,999,"var")],
+                "nausea": [(0,0,"yok"), (1,999,"var")],
+                "vomiting": [(0,0,"yok"), (1,999,"var")]
+            },
+
+            "physical_exam": {
+                "tenderness": [(0, 0, "yok"), (1, 999, "var")],
+                "rebound": [(0, 0, "yok"), (1, 999, "var")],
+                "guarding": [(0, 0, "yok"), (1, 999, "var")],
+                "hepatomegaly": [(0, 0, "yok"), (1, 999, "var")],
+                "splenomegaly": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "risk_scores": {
+                "ibd_risk": [(0,5,"düşük"), (6,10,"orta"), (11,999,"yüksek")],
+                "pancreatitis_risk": [(0,5,"düşük"), (6,10,"orta"), (11,999,"yüksek")]
+            }
+        }
+
+    },
+
 
     "pediatrics":{
 
-        # Çocuk WBC (yaşa göre değişir, ortalama değerler)
-        "wbc_child": [
-        (5.0, 15.0, "normal"),
-        (15.1, 20.0, "hafif yüksek"),
-        (20.1, 9999, "ciddi yüksek"),
-        (0, 4.9, "düşük")
-        ],
+        "lab": {
 
-        # Çocuk Hemoglobin
-        "hgb_child": [
-        (11.0, 16.0, "normal"),
-        (0, 10.9, "düşük"),
-        (16.1, 9999, "yüksek")
-        ],
+            "cbc": {
+                "wbc": {
+                    "newborn": [(9, 30, "normal"), (0, 8.9, "düşük"), (30.1, 999, "yüksek")],
+                    "infant": [(6, 17, "normal"), (0, 5.9, "düşük"), (17.1, 999, "yüksek")],
+                    "child": [(5, 14.5, "normal"), (0, 4.9, "düşük"), (14.6, 999, "yüksek")],
+                    "adolescent": [(4, 11, "normal"), (0, 3.9, "düşük"), (11.1, 999, "yüksek")]
+                },
+                "hgb": {
+                    "newborn": [(14, 22, "normal"), (0, 13.9, "düşük"), (22.1, 999, "yüksek")],
+                    "infant": [(10, 14, "normal"), (0, 9.9, "düşük"), (14.1, 999, "yüksek")],
+                    "child": [(11.5, 15.5, "normal"), (0, 11.4, "düşük"), (15.6, 999, "yüksek")],
+                    "adolescent": [(12, 16, "normal"), (0, 11.9, "düşük"), (16.1, 999, "yüksek")]
+                },
+                "plt": {
+                    "newborn": [(150, 450, "normal"), (0, 149, "düşük"), (451, 999, "yüksek")],
+                    "infant": [(150, 450, "normal"), (0, 149, "düşük"), (451, 999, "yüksek")],
+                    "child": [(150, 450, "normal"), (0, 149, "düşük"), (451, 999, "yüksek")],
+                    "adolescent": [(150, 450, "normal"), (0, 149, "düşük"), (451, 999, "yüksek")]
+                }
+            },
 
-        # Çocuk Hematokrit
-        "hct_child": [
-        (33, 45, "normal"),
-        (0, 32.9, "düşük"),
-        (45.1, 9999, "yüksek")
-        ],
+            "electrolytes": {
+                "sodium": {
+                    "newborn": [(135, 145, "normal"), (0, 134, "düşük"), (146, 999, "yüksek")],
+                    "infant": [(135, 145, "normal"), (0, 134, "düşük"), (146, 999, "yüksek")],
+                    "child": [(135, 145, "normal"), (0, 134, "düşük"), (146, 999, "yüksek")],
+                    "adolescent": [(135, 145, "normal"), (0, 134, "düşük"), (146, 999, "yüksek")]
+                },
+                "potassium": {
+                    "newborn": [(3.7, 5.9, "normal"), (0, 3.6, "düşük"), (6, 999, "yüksek")],
+                    "infant": [(3.5, 5.5, "normal"), (0, 3.4, "düşük"), (5.6, 999, "yüksek")],
+                    "child": [(3.5, 5.0, "normal"), (0, 3.4, "düşük"), (5.1, 999, "yüksek")],
+                    "adolescent": [(3.5, 5.0, "normal"), (0, 3.4, "düşük"), (5.1, 999, "yüksek")]
+                },
+                "calcium": {
+                    "infant": [(9, 11, "normal"), (0, 8.9, "düşük"), (11.1, 999, "yüksek")],
+                    "child": [(8.5, 10.5, "normal"), (0, 8.4, "düşük"), (10.6, 999, "yüksek")],
+                    "adolescent": [(8.5, 10.5, "normal"), (0, 8.4, "düşük"), (10.6, 999, "yüksek")]
+                }
+            },
 
-        # Çocuk Trombosit
-        "plt_child": [
-        (150, 450, "normal"),
-        (0, 149, "düşük"),
-        (451, 9999, "yüksek")
-        ],
+            "infection_panel": {
+                "crp": {
+                    "newborn": [(0, 5, "normal"), (6, 20, "hafif yüksek"), (21, 999, "yüksek")],
+                    "infant": [(0, 5, "normal"), (6, 20, "hafif yüksek"), (21, 999, "yüksek")],
+                    "child": [(0, 5, "normal"), (6, 20, "hafif yüksek"), (21, 999, "yüksek")],
+                    "adolescent": [(0, 5, "normal"), (6, 20, "hafif yüksek"), (21, 999, "yüksek")]
+                },
+                "procalcitonin": {
+                    "newborn": [(0, 0.5, "normal"), (0.51, 2, "orta"), (2.1, 999, "ciddi yüksek")],
+                    "infant": [(0, 0.5, "normal"), (0.51, 2, "orta"), (2.1, 999, "ciddi yüksek")],
+                    "child": [(0, 0.5, "normal"), (0.51, 2, "orta"), (2.1, 999, "ciddi yüksek")],
+                    "adolescent": [(0, 0.5, "normal"), (0.51, 2, "orta"), (2.1, 999, "ciddi yüksek")]
+                }
+            },
 
-        # Yenidoğan Total Bilirubin (çok önemli)
-        "bilirubin_newborn": [
-        (0, 12, "normal"),
-        (12.1, 15, "hafif yüksek"),
-        (15.1, 20, "orta yüksek"),
-        (20.1, 9999, "ciddi yüksek (kernikterus riski)")
-        ],
+            "metabolism_panel": {
+                "glucose": {
+                    "newborn": [(40, 90, "normal"), (0, 39, "düşük"), (91, 999, "yüksek")],
+                    "infant": [(60, 100, "normal"), (0, 59, "düşük"), (101, 999, "yüksek")],
+                    "child": [(70, 99, "normal"), (100, 125, "prediyabet"), (126, 999, "diyabet")],
+                    "adolescent": [(70, 99, "normal"), (100, 125, "prediyabet"), (126, 999, "diyabet")]
+                }
+            }
+        },
 
-        # Çocuk CRP
-        "crp_child": [
-        (0, 5, "normal"),
-        (6, 20, "hafif yüksek"),
-        (21, 50, "orta yüksek"),
-        (51, 9999, "ciddi yüksek")
-        ],
+        "imaging": {
 
-        # Çocuk Ferritin
-        "ferritin_child": [
-        (20, 200, "normal"),
-        (0, 19, "düşük"),
-        (201, 9999, "yüksek")
-        ],
+            "ultrasound": {
+                "appendix_diameter": [(0, 6, "normal"), (6.1, 999, "apandisit")],
+                "intussusception": [(0, 0, "yok"), (1, 999, "var")],
+                "hydronephrosis": [(0, 0, "yok"), (1, 999, "var")]
+            },
 
-        # Çocuk Demir
-        "iron_child": [
-        (50, 120, "normal"),
-        (0, 49, "düşük"),
-        (121, 9999, "yüksek")
-        ],
+            "chest_xray": {
+                "bronchiolitis_signs": [(0, 0, "yok"), (1, 999, "var")],
+                "pneumonia": [(0, 0, "yok"), (1, 999, "var")],
+                "hyperinflation": [(0, 0, "yok"), (1, 999, "var")]
+            },
 
-        # Çocuk Elektrolitler
-        "sodium_child": [
-        (135, 145, "normal"),
-        (146, 160, "yüksek"),
-        (0, 134, "düşük")
-        ],
+            "ct_mri": {
+                "brain_edema": [(0, 0, "yok"), (1, 999, "var")],
+                "ventriculomegaly": [(0, 0, "yok"), (1, 999, "var")],
+                "abdominal_mass": [(0, 0, "yok"), (1, 999, "var")]
+            }
+        },
 
-        "potassium_child": [
-        (3.5, 5.5, "normal"),
-        (5.6, 6.5, "hafif yüksek"),
-        (6.6, 9999, "ciddi yüksek")
-        ],
+        "clinical": {
 
-        "calcium_child": [
-        (8.8, 10.8, "normal"),
-        (10.9, 12, "hafif yüksek"),
-        (12.1, 9999, "ciddi yüksek")
-        ],
+            "symptoms": {
+                "fever": [(0, 0, "yok"), (1, 999, "var")],
+                "poor_feeding": [(0, 0, "yok"), (1, 999, "var")],
+                "irritability": [(0, 0, "yok"), (1, 999, "var")],
+                "vomiting": [(0, 0, "yok"), (1, 999, "var")],
+                "diarrhea": [(0, 0, "yok"), (1, 999, "var")]
+            },
 
-        # Çocuk Vitamin D
-        "vitamin_d_child": [
-        (30, 100, "normal"),
-        (20, 29, "hafif düşük"),
-        (0, 19, "ciddi düşük")
-        ],
+            "physical_exam": {
+                "dehydration": [(0, 0, "yok"), (1, 999, "var")],
+                "rash": [(0, 0, "yok"), (1, 999, "var")],
+                "lymphadenopathy": [(0, 0, "yok"), (1, 999, "var")]
+            },
 
-        # Çocuk B12
-        "b12_child": [
-        (200, 900, "normal"),
-        (0, 199, "düşük"),
-        (901, 9999, "yüksek")
-        ]
+            "development": {
+                "motor_delay": [(0, 0, "yok"), (1, 999, "var")],
+                "speech_delay": [(0, 0, "yok"), (1, 999, "var")],
+                "growth_percentile": [(3, 97, "normal"), (0, 2.9, "düşük"), (97.1, 999, "yüksek")]
+            }
+        }
     },
 
     "ob_gyn":{
 
-        # Beta-hCG (Gebelik hormonu)
-        "beta_hcg": [
-        (0, 5, "negatif"),
-        (6, 25, "şüpheli (tekrar test)"),
-        (26, 999999, "pozitif (gebelik)")
-        ],
+        "lab": {
 
-        # Gebelik haftasına göre hCG (ortalama aralıklar)
-        "hcg_week_3": [(5, 50, "normal aralık")],
-        "hcg_week_4": [(10, 425, "normal aralık")],
-        "hcg_week_5": [(19, 7340, "normal aralık")],
-        "hcg_week_6": [(1080, 56500, "normal aralık")],
-        "hcg_week_7_8": [(7650, 229000, "normal aralık")],
-        "hcg_week_9_12": [(25700, 288000, "normal aralık")],
+            "pregnancy_panel": {
+                "hcg": {
+                    "non_pregnant": [(0, 5, "normal")],
+                    "first_trimester": [(5000, 200000, "normal"), (0, 4999, "düşük"), (200001, 999999, "yüksek")],
+                    "second_trimester": [(10000, 80000, "normal")],
+                    "third_trimester": [(5000, 50000, "normal")]
+                },
+                "progesterone": {
+                    "non_pregnant": [(5, 20, "normal")],
+                    "first_trimester": [(11, 90, "normal")],
+                    "second_trimester": [(25, 90, "normal")],
+                    "third_trimester": [(48, 300, "normal")]
+                },
+                "estradiol": {
+                    "non_pregnant": [(30, 400, "normal")],
+                    "first_trimester": [(188, 2497, "normal")],
+                    "second_trimester": [(1278, 7192, "normal")],
+                    "third_trimester": [(6137, 34600, "normal")]
+                }
+            },
 
-        # Progesteron (Gebelik ve ovulasyon için kritik)
-        "progesterone": [
-        (0, 1.5, "foliküler faz"),
-        (2, 20, "luteal faz (normal)"),
-        (21, 9999, "gebelik aralığı")
-        ],
+            "gynecology_hormones": {
+                "fsh": {
+                    "adult": [(3, 10, "normal"), (11, 20, "hafif yüksek"), (21, 999, "ciddi yüksek")],
+                    "elderly": [(25, 134, "menopoz")]
+                },
+                "lh": {
+                    "adult": [(2, 12, "normal"), (13, 999, "yüksek")],
+                    "elderly": [(15, 999, "menopoz")]
+                },
+                "prolactin": {
+                    "adult": [(4, 15, "normal"), (16, 25, "hafif yüksek"), (26, 999, "ciddi yüksek")]
+                },
+                "amh": {
+                    "adult": [(1, 4, "normal"), (0, 0.9, "düşük"), (4.1, 999, "yüksek")]
+                }
+            },
 
-        # Estradiol (E2)
-        "estradiol": [
-        (30, 400, "normal"),
-        (0, 29, "düşük"),
-        (401, 9999, "yüksek")
-        ],
+            "infection_panel": {
+                "vaginal_ph": [(3.8, 4.5, "normal"), (4.6, 999, "yüksek")],
+                "candida_antigen": [(0, 0, "negatif"), (1, 999, "pozitif")],
+                "trichomonas": [(0, 0, "negatif"), (1, 999, "pozitif")],
+                "gardnerella": [(0, 0, "negatif"), (1, 999, "pozitif")]
+            },
 
-        # FSH (Folikül uyarıcı hormon)
-        "fsh": [
-        (3, 10, "normal"),
-        (11, 20, "hafif yüksek"),
-        (21, 9999, "ciddi yüksek (menopoz?)")
-        ],
+            "pregnancy_glucose": {
+                "ogtt_1h": {
+                    "first_trimester": [(0, 140, "normal"), (141, 999, "yüksek")],
+                    "second_trimester": [(0, 140, "normal"), (141, 999, "yüksek")],
+                    "third_trimester": [(0, 140, "normal"), (141, 999, "yüksek")]
+                }
+            }
+        },
 
-        # LH (Luteinize edici hormon)
-        "lh": [
-        (2, 12, "normal"),
-        (13, 9999, "yüksek (PCOS?)")
-        ],
+        "imaging": {
 
-        # LH/FSH oranı (PCOS için kritik)
-        "lh_fsh_ratio": [
-        (0, 1.9, "normal"),
-        (2.0, 9999, "yüksek (PCOS şüphesi)")
-        ],
+            "ob_ultrasound": {
+                "crl": {  # Crown-Rump Length
+                    "first_trimester": [(10, 84, "normal"), (0, 9, "düşük"), (85, 999, "yüksek")]
+                },
+                "bpd": {  # Biparietal Diameter
+                    "second_trimester": [(40, 80, "normal")],
+                    "third_trimester": [(80, 100, "normal")]
+                },
+                "fl": {   # Femur Length
+                    "second_trimester": [(20, 40, "normal")],
+                    "third_trimester": [(40, 60, "normal")]
+                },
+                "placenta_position": [(0, 0, "normal"), (1, 999, "previa")]
+            },
 
-        # AMH (Anti-Müllerian hormon) – yumurtalık rezervi
-        "amh": [
-        (1.0, 4.0, "normal"),
-        (0, 0.99, "düşük rezerv"),
-        (4.1, 9999, "yüksek (PCOS?)")
-        ],
+            "doppler": {
+                "umbilical_ri": [(0.5, 0.7, "normal"), (0.71, 999, "yüksek")],
+                "uterine_artery_notch": [(0, 0, "yok"), (1, 999, "var")]
+            },
 
-        # Prolaktin (Hiperprolaktinemi)
-        "prolactin": [
-        (4, 15, "normal"),
-        (16, 25, "hafif yüksek"),
-        (26, 9999, "ciddi yüksek (prolaktinoma?)")
-        ],
+            "gyn_ultrasound": {
+                "endometrial_thickness": {
+                    "adult": [(3, 14, "normal"), (0, 2.9, "düşük"), (14.1, 999, "yüksek")]
+                },
+                "ovarian_cyst": [(0, 0, "yok"), (1, 999, "var")],
+                "fibroid": [(0, 0, "yok"), (1, 999, "var")]
+            }
+        },
 
-        # TSH (Gebelikte özel aralık)
-        "tsh_pregnancy": [
-        (0.1, 2.5, "normal (gebelik)"),
-        (2.6, 9999, "yüksek (hipotiroidi?)"),
-        (0, 0.09, "düşük (hipertiroidi?)")
-        ],
+        "clinical": {
 
-        # DHEA-S (Androjen fazlalığı)
-        "dhea_s": [
-        (35, 430, "normal"),
-        (431, 9999, "yüksek (PCOS / adrenal?)"),
-        (0, 34, "düşük")
-        ]
+            "ob_symptoms": {
+                "vaginal_bleeding": [(0, 0, "yok"), (1, 999, "var")],
+                "abdominal_pain": [(0, 0, "yok"), (1, 999, "var")],
+                "decreased_fetal_movement": [(0, 0, "yok"), (1, 999, "var")],
+                "hyperemesis": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "gyn_symptoms": {
+                "pelvic_pain": [(0, 0, "yok"), (1, 999, "var")],
+                "dyspareunia": [(0, 0, "yok"), (1, 999, "var")],
+                "irregular_cycles": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "physical_exam": {
+                "cervical_motion_tenderness": [(0, 0, "yok"), (1, 999, "var")],
+                "uterine_tenderness": [(0, 0, "yok"), (1, 999, "var")],
+                "adnexal_mass": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "risk_scores": {
+                "preeclampsia_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")],
+                "preterm_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")]
+            }
+        }
     },
 
     "oncology":{
 
-        # CEA (Kolon kanseri belirteci)
-        "cea": [
-        (0, 3, "normal"),
-        (3.1, 5, "hafif yüksek"),
-        (5.1, 9999, "ciddi yüksek (kolon kanseri?)")
-        ],
+        "lab": {
 
-        # CA-125 (Over kanseri belirteci)
-        "ca125": [
-        (0, 35, "normal"),
-        (36, 100, "hafif yüksek"),
-        (101, 9999, "ciddi yüksek (over kanseri?)")
-        ],
+            "tumor_markers": {
 
-        # CA 19-9 (Pankreas kanseri belirteci)
-        "ca19_9": [
-        (0, 37, "normal"),
-        (38, 100, "hafif yüksek"),
-        (101, 9999, "ciddi yüksek (pankreas / safra yolu?)")
-        ],
+                "cea": {  # Kolon kanseri
+                    "adult": [(0, 3, "normal"), (3.1, 5, "hafif yüksek"), (5.1, 9999, "ciddi yüksek")],
+                    "elderly": [(0, 4, "normal"), (4.1, 6, "hafif yüksek"), (6.1, 9999, "ciddi yüksek")]
+                },
 
-        # AFP (Karaciğer tümörleri)
-         "afp": [
-        (0, 10, "normal"),
-        (11, 100, "hafif yüksek"),
-        (101, 9999, "ciddi yüksek (hepatoselüler karsinom?)")
-        ],
+                "ca125": {  # Over kanseri
+                    "adult": [(0, 35, "normal"), (36, 100, "hafif yüksek"), (101, 9999, "ciddi yüksek")]
+                },
 
-        # PSA (Prostat kanseri)
-        "psa": [
-        (0, 4, "normal"),
-        (4.1, 10, "hafif yüksek"),
-        (10.1, 9999, "ciddi yüksek (prostat kanseri?)")
-        ],
+                "ca19_9": {  # Pankreas / safra yolu
+                    "adult": [(0, 37, "normal"), (38, 100, "hafif yüksek"), (101, 9999, "ciddi yüksek")]
+                },
 
-        # Serbest PSA oranı (kanser riskini belirler)
-        "free_psa_ratio": [
-        (0.25, 1.0, "düşük risk"),
-        (0.10, 0.24, "orta risk"),
-        (0, 0.09, "yüksek risk (kanser?)")
-        ],
+                "afp": {  # Karaciğer tümörü (HCC)
+                    "child": [(0, 10, "normal"), (11, 100, "hafif yüksek"), (101, 9999, "ciddi yüksek")],
+                    "adult": [(0, 10, "normal"), (11, 100, "hafif yüksek"), (101, 9999, "ciddi yüksek")]
+                },
 
-        # LDH (Lenfoma / lösemi / metastaz)
-        "ldh": [
-        (140, 280, "normal"),
-        (281, 9999, "yüksek (doku hasarı / malignite?)")
-        ],
+                "psa": {  # Prostat kanseri
+                    "adult": [(0, 4, "normal"), (4.1, 10, "hafif yüksek"), (10.1, 9999, "ciddi yüksek")],
+                    "elderly": [(0, 6, "normal"), (6.1, 10, "hafif yüksek"), (10.1, 9999, "ciddi yüksek")]
+                },
 
-        # Beta-2 Mikroglobulin (Lenfoma / miyelom)
-        "beta2_microglobulin": [
-        (0.7, 1.8, "normal"),
-        (1.9, 3.5, "hafif yüksek"),
-        (3.6, 9999, "ciddi yüksek (lenfoma / miyelom?)")
-        ],
+                "free_psa_ratio": {
+                    "adult": [(0.25, 1.0, "düşük risk"), (0.10, 0.24, "orta risk"), (0, 0.09, "yüksek risk")]
+                }
+            },
 
-        # Ferritin (çok yüksek → malignite / inflamasyon)
-        "ferritin": [
-        (30, 400, "normal"),
-        (401, 1000, "hafif yüksek"),
-        (1001, 9999, "ciddi yüksek (hiperinflamasyon / malignite?)")
-        ],
+            "hematologic_markers": {
 
-        # CRP (kanser inflamasyonu)
-        "crp": [
-        (0, 5, "normal"),
-        (6, 20, "hafif yüksek"),
-        (21, 50, "orta yüksek"),
-        (51, 9999, "ciddi yüksek")
-        ],
+                "ldh": {
+                    "child": [(140, 280, "normal"), (281, 9999, "yüksek")],
+                    "adult": [(140, 280, "normal"), (281, 9999, "yüksek")]
+                },
 
-        # D-dimer (kanser + pıhtılaşma)
-        "d_dimer": [
-        (0, 0.5, "normal"),
-        (0.51, 1.0, "hafif yüksek"),
-        (1.01, 9999, "ciddi yüksek (tromboz / malignite?)")
-        ]
+                "beta2_microglobulin": {
+                    "adult": [(0.7, 1.8, "normal"), (1.9, 3.5, "hafif yüksek"), (3.6, 9999, "ciddi yüksek")]
+                },
+
+                "ferritin": {
+                    "child": [(20, 200, "normal"), (201, 9999, "yüksek")],
+                    "adult": [(30, 400, "normal"), (401, 1000, "hafif yüksek"), (1001, 9999, "ciddi yüksek")]
+                }
+            },
+
+            "inflammation_panel": {
+                "crp": {
+                    "child": [(0, 5, "normal"), (6, 20, "hafif yüksek"), (21, 9999, "ciddi yüksek")],
+                    "adult": [(0, 5, "normal"), (6, 20, "hafif yüksek"), (21, 9999, "ciddi yüksek")]
+                },
+                "d_dimer": {
+                    "adult": [(0, 0.5, "normal"), (0.51, 1.0, "hafif yüksek"), (1.01, 9999, "ciddi yüksek")]
+                }
+            }
+        },
+
+        "imaging": {
+
+            "ultrasound": {
+                "liver_lesion": [(0, 0, "yok"), (1, 999, "var")],
+                "thyroid_nodule": [(0, 0, "yok"), (1, 999, "var")],
+                "breast_mass": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "ct": {
+                "lung_nodule": [(0, 0, "yok"), (1, 999, "var")],
+                "lymphadenopathy": [(0, 0, "yok"), (1, 999, "var")],
+                "pancreas_mass": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "mri": {
+                "brain_mass": [(0, 0, "yok"), (1, 999, "var")],
+                "bone_marrow_infiltration": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "pet_ct": {
+                "fdg_uptake": [(0, 2.5, "normal"), (2.6, 4.9, "orta"), (5, 999, "yüksek")]
+            }
+        },
+
+        "clinical": {
+
+            "symptoms": {
+                "weight_loss": [(0, 0, "yok"), (1, 999, "var")],
+                "night_sweats": [(0, 0, "yok"), (1, 999, "var")],
+                "fatigue": [(0, 0, "yok"), (1, 999, "var")],
+                "pain": [(0, 0, "yok"), (1, 999, "var")],
+                "bleeding": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "physical_exam": {
+                "lymph_nodes": [(0, 0, "normal"), (1, 999, "büyümüş")],
+                "hepatomegaly": [(0, 0, "yok"), (1, 999, "var")],
+                "splenomegaly": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "risk_scores": {
+                "solid_tumor_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")],
+                "lymphoma_risk": [(0, 3, "düşük"), (4, 6, "orta"), (7, 999, "yüksek")]
+            }
+        }
     },
 
     "neurology":{
 
-        # CK (Kas hasarı / miyopati)
-        "ck": [
-        (30, 200, "normal"),
-        (201, 1000, "hafif yüksek (kas hasarı)"),
-        (1001, 9999, "ciddi yüksek (rabdomiyoliz?)")
-        ],
+        "lab": {
 
-        # Vitamin B12 (Nöropati için kritik)
-        "b12": [
-        (200, 900, "normal"),
-        (0, 199, "düşük (nöropati riski)"),
-        (901, 9999, "yüksek")
-        ],
+            "electrolytes": {
+                "sodium": {
+                    "child": [(135, 145, "normal"), (0, 134, "düşük"), (146, 999, "yüksek")],
+                    "adult": [(135, 145, "normal"), (0, 134, "düşük"), (146, 999, "yüksek")],
+                    "elderly": [(135, 147, "normal"), (0, 134, "düşük"), (148, 999, "yüksek")]
+                },
+                "calcium": {
+                    "child": [(8.8, 10.8, "normal"), (0, 8.7, "düşük"), (10.9, 999, "yüksek")],
+                    "adult": [(8.5, 10.5, "normal"), (0, 8.4, "düşük"), (10.6, 999, "yüksek")]
+                },
+                "magnesium": {
+                    "child": [(1.7, 2.3, "normal"), (0, 1.69, "düşük"), (2.31, 999, "yüksek")],
+                    "adult": [(1.7, 2.2, "normal"), (0, 1.69, "düşük"), (2.21, 999, "yüksek")]
+                }
+            },
 
-        # Folat (Nörolojik fonksiyon)
-        "folate": [
-        (3, 17, "normal"),
-        (0, 2.9, "düşük (nörolojik etkiler)")
-        ],
+            "vitamins": {
+                "b12": {
+                    "child": [(250, 1200, "normal"), (0, 249, "düşük"), (1201, 9999, "yüksek")],
+                    "adult": [(200, 900, "normal"), (0, 199, "düşük"), (901, 9999, "yüksek")],
+                    "elderly": [(180, 800, "normal"), (0, 179, "düşük"), (801, 9999, "yüksek")]
+                },
+                "folate": {
+                    "child": [(5, 20, "normal"), (0, 4.9, "düşük")],
+                    "adult": [(3, 17, "normal"), (0, 2.9, "düşük")]
+                }
+            },
 
-        # Ammonia (Hepatik ensefalopati → nörolojik)
-        "ammonia": [
-        (15, 45, "normal"),
-        (46, 80, "hafif yüksek"),
-        (81, 9999, "ciddi yüksek (ensefalopati?)")
-        ],
+            "neurometabolic": {
+                "ammonia": {
+                    "child": [(15, 45, "normal"), (46, 80, "hafif yüksek"), (81, 9999, "ciddi yüksek")],
+                    "adult": [(15, 45, "normal"), (46, 80, "hafif yüksek"), (81, 9999, "ciddi yüksek")]
+                },
+                "lactate": {
+                    "child": [(0.5, 2.0, "normal"), (2.1, 4.0, "hafif yüksek"), (4.1, 9999, "ciddi yüksek")],
+                    "adult": [(0.5, 2.0, "normal"), (2.1, 4.0, "hafif yüksek"), (4.1, 9999, "ciddi yüksek")]
+                }
+            },
 
-        # Laktat (mitokondriyal hastalık / nörometabolik bozukluk)
-        "lactate": [
-        (0.5, 2.0, "normal"),
-        (2.1, 4.0, "hafif yüksek"),
-        (4.1, 9999, "ciddi yüksek (laktik asidoz)")
-        ],
+            "inflammation": {
+                "crp": {
+                    "child": [(0, 5, "normal"), (6, 20, "hafif yüksek"), (21, 9999, "yüksek")],
+                    "adult": [(0, 5, "normal"), (6, 20, "hafif yüksek"), (21, 9999, "yüksek")]
+                },
+                "esr": {
+                    "child": [(0, 10, "normal"), (11, 20, "hafif yüksek"), (21, 9999, "yüksek")],
+                    "adult": [(0, 20, "normal"), (21, 40, "hafif yüksek"), (41, 9999, "yüksek")]
+                }
+            },
 
-        # Sodyum (nöbet / bilinç değişikliği)
-        "sodium": [
-        (135, 145, "normal"),
-        (0, 134, "düşük (nöbet riski)"),
-        (146, 160, "yüksek (bilinç değişikliği)")
-        ],
+            "thyroid": {
+                "tsh": {
+                    "child": [(0.6, 4.8, "normal"), (0, 0.59, "düşük"), (4.9, 9999, "yüksek")],
+                    "adult": [(0.4, 4.0, "normal"), (0, 0.39, "düşük"), (4.1, 9999, "yüksek")]
+                }
+            }
+        },
 
-        # Kalsiyum (kas kasılması / nöbet)
-        "calcium": [
-        (8.5, 10.5, "normal"),
-        (0, 8.49, "düşük (tetani / nöbet?)"),
-        (10.6, 9999, "yüksek (bilinç değişikliği?)")
-        ],
 
-        # Magnezyum (nöbet / kas kasılması)
-        "magnesium": [
-        (1.7, 2.2, "normal"),
-        (0, 1.69, "düşük (nöbet / kas kasılması)"),
-        (2.3, 9999, "yüksek")
-        ],
+        "imaging": {
 
-        # CRP (nöroinflamasyon)
-        "crp": [
-        (0, 5, "normal"),
-        (6, 20, "hafif yüksek"),
-        (21, 50, "orta yüksek"),
-        (51, 9999, "ciddi yüksek")
-        ],
+            "brain_mri": {
+                "white_matter_lesions": [(0, 0, "yok"), (1, 999, "var")],
+                "cortical_atrophy": [(0, 0, "yok"), (1, 999, "var")],
+                "hippocampal_volume_loss": [(0, 0, "yok"), (1, 999, "var")],
+                "demyelination": [(0, 0, "yok"), (1, 999, "var")]
+            },
 
-        # ESR (kronik nöroinflamasyon)
-        "esr": [
-        (0, 20, "normal"),
-        (21, 40, "hafif yüksek"),
-        (41, 9999, "yüksek")
-        ],
+            "brain_ct": {
+                "hemorrhage": [(0, 0, "yok"), (1, 999, "var")],
+                "ischemia": [(0, 0, "yok"), (1, 999, "var")],
+                "mass_effect": [(0, 0, "yok"), (1, 999, "var")]
+            },
 
-        # TSH (nöropsikiyatrik etkiler)
-        "tsh": [
-        (0.4, 4.0, "normal"),
-        (4.1, 10, "hafif yüksek (hipotiroidi → depresyon?)"),
-        (10.1, 9999, "ciddi yüksek"),
-        (0, 0.39, "düşük (hipertiroidi → anksiyete?)")
-        ]
-    },
+            "doppler": {
+                "carotid_stenosis": [(0, 0, "yok"), (1, 999, "var")],
+                "vertebral_flow": [(0, 0, "normal"), (1, 999, "azalmış")]
+            },
+
+            "eeg": {
+                "epileptiform_activity": [(0, 0, "yok"), (1, 999, "var")],
+                "slowing": [(0, 0, "yok"), (1, 999, "var")]
+            }
+        },
+
+        "clinical": {
+
+            "symptoms": {
+                "headache": [(0, 0, "yok"), (1, 999, "var")],
+                "dizziness": [(0, 0, "yok"), (1, 999, "var")],
+                "seizure": [(0, 0, "yok"), (1, 999, "var")],
+                "confusion": [(0, 0, "yok"), (1, 999, "var")],
+                "weakness": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "physical_exam": {
+            "motor_deficit": [(0, 0, "yok"), (1, 999, "var")],
+            "sensory_loss": [(0, 0, "yok"), (1, 999, "var")],
+            "reflex_changes": [(0, 0, "normal"), (1, 999, "anormal")],
+            "gait_abnormality": [(0, 0, "yok"), (1, 999, "var")]
+        },
+
+        "risk_scores": {
+            "stroke_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")],
+            "dementia_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")]
+        }
+    }
+},
 
     "pulmonology":{
 
-        # D-dimer (Pulmoner emboli için kritik)
-        "d_dimer": [
-        (0, 0.5, "normal"),
-        (0.51, 1.0, "hafif yüksek"),
-        (1.01, 9999, "ciddi yüksek (PE / DVT?)")
-        ],
+        "lab": {
 
-        # CRP (Enfeksiyon / inflamasyon)
-        "crp": [
-        (0, 5, "normal"),
-        (6, 20, "hafif yüksek"),
-        (21, 50, "orta yüksek"),
-        (51, 9999, "ciddi yüksek")
-        ],
+            "abg": {  # Arteriyel kan gazı
+                "pH": {
+                    "child": [(7.35, 7.45, "normal"), (0, 7.34, "asidoz"), (7.46, 999, "alkaloz")],
+                    "adult": [(7.35, 7.45, "normal"), (0, 7.34, "asidoz"), (7.46, 999, "alkaloz")],
+                    "elderly": [(7.34, 7.45, "normal"), (0, 7.33, "asidoz"), (7.46, 999, "alkaloz")]
+                },
+                "pO2": {
+                    "child": [(80, 100, "normal"), (60, 79, "hafif düşük"), (40, 59, "orta düşük"),
+                              (0, 39, "ciddi düşük")],
+                    "adult": [(75, 100, "normal"), (60, 74, "hafif düşük"), (40, 59, "orta düşük"),
+                              (0, 39, "ciddi düşük")],
+                    "elderly": [(70, 95, "normal"), (50, 69, "hafif düşük"), (30, 49, "orta düşük"),
+                                (0, 29, "ciddi düşük")]
+                },
+                "pCO2": {
+                    "child": [(35, 45, "normal"), (0, 34, "düşük"), (46, 999, "yüksek")],
+                    "adult": [(35, 45, "normal"), (0, 34, "düşük"), (46, 999, "yüksek")],
+                    "elderly": [(35, 48, "normal"), (0, 34, "düşük"), (49, 999, "yüksek")]
+                },
+                "HCO3": {
+                    "child": [(22, 26, "normal"), (0, 21.9, "düşük"), (26.1, 999, "yüksek")],
+                    "adult": [(22, 26, "normal"), (0, 21.9, "düşük"), (26.1, 999, "yüksek")],
+                    "elderly": [(23, 28, "normal"), (0, 22.9, "düşük"), (28.1, 999, "yüksek")]
+                }
+            },
 
-        # Arteriyel Kan Gazı (ABG) – pH
-        "abg_ph": [
-        (7.35, 7.45, "normal"),
-        (0, 7.34, "asidoz"),
-        (7.46, 9999, "alkaloz")
-        ],
+            "oxygenation": {
+                "spo2": {
+                    "child": [(95, 100, "normal"), (90, 94, "hafif düşük"), (80, 89, "orta düşük"),
+                              (0, 79, "ciddi düşük")],
+                    "adult": [(94, 100, "normal"), (90, 93, "hafif düşük"), (80, 89, "orta düşük"),
+                              (0, 79, "ciddi düşük")],
+                    "elderly": [(92, 100, "normal"), (88, 91, "hafif düşük"), (80, 87, "orta düşük"),
+                                (0, 79, "ciddi düşük")]
+                }
+            },
 
-        # PaO2 (oksijen basıncı)
-        "pao2": [
-        (80, 100, "normal"),
-        (60, 79, "hafif düşük (hafif hipoksi)"),
-        (40, 59, "orta düşük (orta hipoksi)"),
-        (0, 39, "ciddi düşük (ağır hipoksi)")
-        ],
+            "inflammation": {
+                "crp": {
+                    "child": [(0, 5, "normal"), (6, 20, "hafif yüksek"), (21, 999, "yüksek")],
+                    "adult": [(0, 5, "normal"), (6, 20, "hafif yüksek"), (21, 999, "yüksek")]
+                },
+                "procalcitonin": {
+                    "child": [(0, 0.5, "normal"), (0.51, 2, "orta"), (2.1, 999, "ciddi yüksek")],
+                    "adult": [(0, 0.5, "normal"), (0.51, 2, "orta"), (2.1, 999, "ciddi yüksek")]
+                }
+            },
 
-        # PaCO2 (karbondioksit basıncı)
-        "paco2": [
-        (35, 45, "normal"),
-        (46, 60, "yüksek (hiperkapni / solunum yetmezliği)"),
-        (0, 34, "düşük (hiperventilasyon)")
-        ],
+            "allergy_asthma": {
+                "eosinophils": {
+                    "child": [(0, 0.5, "normal"), (0.51, 1.0, "hafif yüksek"), (1.01, 999, "ciddi yüksek")],
+                    "adult": [(0, 0.5, "normal"), (0.51, 1.0, "hafif yüksek"), (1.01, 999, "ciddi yüksek")]
+                },
+                "IgE": {
+                    "child": [(0, 60, "normal"), (61, 200, "hafif yüksek"), (201, 9999, "ciddi yüksek")],
+                    "adult": [(0, 100, "normal"), (101, 300, "hafif yüksek"), (301, 9999, "ciddi yüksek")]
+                }
+            },
 
-        # HCO3 (bikarbonat – metabolik durum)
-        "hco3": [
-        (22, 26, "normal"),
-        (0, 21.9, "düşük (metabolik asidoz)"),
-        (26.1, 9999, "yüksek (metabolik alkaloz)")
-        ],
+            "cohb": {  # Karbonmonoksit zehirlenmesi
+                "child": [(0, 2, "normal"), (3, 10, "hafif yüksek"), (11, 999, "ciddi yüksek")],
+                "adult": [(0, 2, "normal"), (3, 10, "hafif yüksek"), (11, 999, "ciddi yüksek")]
+            }
+        },
 
-        # O2 Saturasyonu (SpO2)
-        "spo2": [
-        (95, 100, "normal"),
-        (90, 94, "hafif düşük"),
-        (80, 89, "orta düşük"),
-        (0, 79, "ciddi düşük (hipoksi)")
-        ],
+        "imaging": {
 
-        # Laktat (hipoperfüzyon / sepsis / ağır solunum yetmezliği)
-        "lactate": [
-        (0.5, 2.0, "normal"),
-        (2.1, 4.0, "hafif yüksek"),
-        (4.1, 9999, "ciddi yüksek (laktik asidoz)")
-        ],
+            "chest_xray": {
+                "infiltrates": [(0, 0, "yok"), (1, 999, "var")],
+                "hyperinflation": [(0, 0, "yok"), (1, 999, "var")],
+                "pleural_effusion": [(0, 0, "yok"), (1, 999, "var")]
+            },
 
-        # Eozinofil (Astım / alerji)
-        "eosinophils": [
-        (0, 0.5, "normal"),
-        (0.51, 1.0, "hafif yüksek"),
-        (1.01, 9999, "ciddi yüksek (alerji / astım?)")
-        ],
+            "ct": {
+                "ground_glass": [(0, 0, "yok"), (1, 999, "var")],
+                "consolidation": [(0, 0, "yok"), (1, 999, "var")],
+                "bronchiectasis": [(0, 0, "yok"), (1, 999, "var")],
+                "emphysema": [(0, 0, "yok"), (1, 999, "var")]
+            },
 
-        # COHb (Karbonmonoksit zehirlenmesi)
-        "carboxyhemoglobin": [
-        (0, 2, "normal"),
-        (3, 10, "hafif yüksek"),
-        (11, 9999, "ciddi yüksek (CO zehirlenmesi)")
-        ]
+            "hrct": {
+                "reticulation": [(0, 0, "yok"), (1, 999, "var")],
+                "honeycombing": [(0, 0, "yok"), (1, 999, "var")],
+                "traction_bronchiectasis": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "lung_ultrasound": {
+                "b_lines": [(0, 0, "yok"), (1, 999, "var")],
+                "pleural_thickening": [(0, 0, "yok"), (1, 999, "var")]
+            }
+        },
+
+        "clinical": {
+
+            "symptoms": {
+                "cough": [(0, 0, "yok"), (1, 999, "var")],
+                "dyspnea": [(0, 0, "yok"), (1, 999, "var")],
+                "wheezing": [(0, 0, "yok"), (1, 999, "var")],
+                "chest_pain": [(0, 0, "yok"), (1, 999, "var")],
+                "hemoptysis": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "physical_exam": {
+                "rales": [(0, 0, "yok"), (1, 999, "var")],
+                "ronchi": [(0, 0, "yok"), (1, 999, "var")],
+                "wheezing": [(0, 0, "yok"), (1, 999, "var")],
+                "cyanosis": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "spirometry": {
+                "fev1": [(80, 100, "normal"), (50, 79, "orta düşük"), (0, 49, "ciddi düşük")],
+                "fvc": [(80, 100, "normal"), (50, 79, "orta düşük"), (0, 49, "ciddi düşük")],
+                "fev1_fvc_ratio": [(0.7, 1.0, "normal"), (0, 0.69, "obstrüksiyon")]
+            },
+
+            "risk_scores": {
+                "copd_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")],
+                "pneumonia_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")]
+            }
+        }
     },
 
     "dermatology":{
 
-        # Vitamin D (Saç dökülmesi, egzama, bağışıklık)
-        "vitamin_d": [
-        (30, 100, "normal"),
-        (20, 29, "hafif düşük"),
-        (0, 19, "ciddi düşük (deri bariyeri zayıf)")
-        ],
+        "lab": {
 
-        # Çinko (Saç dökülmesi, yara iyileşmesi)
-        "zinc": [
-        (70, 120, "normal"),
-        (0, 69, "düşük (saç dökülmesi / egzama?)"),
-        (121, 9999, "yüksek")
-        ],
+            "allergy_panel": {
+                "IgE": {
+                    "child": [(0, 60, "normal"), (61, 200, "hafif yüksek"), (201, 9999, "ciddi yüksek")],
+                    "adult": [(0, 100, "normal"), (101, 300, "hafif yüksek"), (301, 9999, "ciddi yüksek")]
+                },
+                "eosinophils": {
+                    "child": [(0, 0.5, "normal"), (0.51, 1.0, "hafif yüksek"), (1.01, 999, "ciddi yüksek")],
+                    "adult": [(0, 0.5, "normal"), (0.51, 1.0, "hafif yüksek"), (1.01, 999, "ciddi yüksek")]
+                }
+            },
 
-        # Ferritin (Saç dökülmesi için kritik)
-        "ferritin": [
-        (30, 400, "normal"),
-        (0, 29, "düşük (saç dökülmesi?)"),
-        (401, 9999, "yüksek (inflamasyon?)")
-        ],
+            "autoimmune_panel": {
+                "ana": {
+                    "adult": [(0, 0, "negatif"), (1, 999, "pozitif")]
+                },
+                "anti_dsDNA": {
+                    "adult": [(0, 0, "negatif"), (1, 999, "pozitif")]
+                },
+                "anti_ro": {
+                    "adult": [(0, 0, "negatif"), (1, 999, "pozitif")]
+                },
+                "anti_la": {
+                    "adult": [(0, 0, "negatif"), (1, 999, "pozitif")]
+                }
+            },
 
-        # IgE (Alerji / atopik dermatit)
-        "ige": [
-        (0, 100, "normal"),
-        (101, 400, "hafif yüksek (alerji?)"),
-        (401, 9999, "ciddi yüksek (atopik dermatit?)")
-        ],
+            "infection_panel": {
+                "crp": {
+                    "child": [(0, 5, "normal"), (6, 20, "hafif yüksek"), (21, 999, "yüksek")],
+                    "adult": [(0, 5, "normal"), (6, 20, "hafif yüksek"), (21, 999, "yüksek")]
+                },
+                "esr": {
+                    "child": [(0, 10, "normal"), (11, 20, "hafif yüksek"), (21, 999, "yüksek")],
+                    "adult": [(0, 20, "normal"), (21, 40, "hafif yüksek"), (41, 999, "yüksek")]
+                }
+            },
 
-        # Eozinofil (Alerji / egzama)
-        "eosinophils": [
-        (0, 0.5, "normal"),
-        (0.51, 1.0, "hafif yüksek"),
-        (1.01, 9999, "ciddi yüksek (alerjik reaksiyon?)")
-        ],
+            "vitamin_panel": {
+                "vitamin_d": {
+                    "child": [(20, 50, "normal"), (0, 19, "düşük"), (51, 999, "yüksek")],
+                    "adult": [(20, 50, "normal"), (0, 19, "düşük"), (51, 999, "yüksek")]
+                },
+                "b12": {
+                    "child": [(250, 1200, "normal"), (0, 249, "düşük"), (1201, 9999, "yüksek")],
+                    "adult": [(200, 900, "normal"), (0, 199, "düşük"), (901, 9999, "yüksek")]
+                }
+            }
+        },
 
-        # ANA (Otoimmün deri hastalıkları)
-        "ana": [
-        (0, 1, "negatif"),
-        (2, 9999, "pozitif (lupus / otoimmün?)")
-        ],
+        "imaging": {
 
-        # CRP (Deri inflamasyonu)
-        "crp": [
-        (0, 5, "normal"),
-        (6, 20, "hafif yüksek"),
-        (21, 50, "orta yüksek"),
-        (51, 9999, "ciddi yüksek")
-        ],
+            "dermoscopy": {
+                "asymmetry": [(0, 0, "yok"), (1, 999, "var")],
+                "border_irregularity": [(0, 0, "yok"), (1, 999, "var")],
+                "color_variegation": [(0, 0, "yok"), (1, 999, "var")],
+                "diameter_mm": [(0, 5, "normal"), (6, 999, "riskli")],
+                "evolution": [(0, 0, "yok"), (1, 999, "var")]
+            },
 
-        # ESR (Kronik inflamasyon)
-        "esr": [
-        (0, 20, "normal"),
-        (21, 40, "hafif yüksek"),
-        (41, 9999, "yüksek")
-        ],
+            "skin_ultrasound": {
+                "dermal_thickness": [(0.5, 3.0, "normal"), (3.1, 999, "kalınlaşma")],
+                "subcutaneous_edema": [(0, 0, "yok"), (1, 999, "var")]
+            }
+        },
 
-        # B12 (deri sağlığı / pigmentasyon)
-        "b12": [
-        (200, 900, "normal"),
-        (0, 199, "düşük"),
-        (901, 9999, "yüksek")
-        ],
+        "clinical": {
 
-        # Folat (deri yenilenmesi)
-        "folate": [
-        (3, 17, "normal"),
-        (0, 2.9, "düşük")
-        ]
+            "symptoms": {
+                "itching": [(0, 0, "yok"), (1, 999, "var")],
+                "burning": [(0, 0, "yok"), (1, 999, "var")],
+                "pain": [(0, 0, "yok"), (1, 999, "var")],
+                "dryness": [(0, 0, "yok"), (1, 999, "var")],
+                "scaling": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "physical_exam": {
+                "erythema": [(0, 0, "yok"), (1, 999, "var")],
+                "edema": [(0, 0, "yok"), (1, 999, "var")],
+                "vesicles": [(0, 0, "yok"), (1, 999, "var")],
+                "pustules": [(0, 0, "yok"), (1, 999, "var")],
+                "plaques": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "lesion_type": {
+                "macule": [(0, 0, "yok"), (1, 999, "var")],
+                "papule": [(0, 0, "yok"), (1, 999, "var")],
+                "nodule": [(0, 0, "yok"), (1, 999, "var")],
+                "patch": [(0, 0, "yok"), (1, 999, "var")],
+                "plaque": [(0, 0, "yok"), (1, 999, "var")],
+                "ulcer": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "risk_scores": {
+                "melanoma_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")],
+                "psoriasis_severity": [(0, 5, "hafif"), (6, 10, "orta"), (11, 999, "ciddi")]
+            }
+        }
     },
 
     "urology":{
 
+        "lab": {
 
-        # PSA (Prostat kanseri taraması)
-        "psa": [
-        (0, 4, "normal"),
-        (4.1, 10, "hafif yüksek"),
-        (10.1, 9999, "ciddi yüksek (prostat kanseri?)")
-        ],
+            "kidney_panel": {
+                "creatinine": {
+                    "child": [(0.3, 0.7, "normal"), (0, 0.29, "düşük"), (0.71, 999, "yüksek")],
+                    "adult": [(0.6, 1.3, "normal"), (0, 0.59, "düşük"), (1.31, 999, "yüksek")],
+                    "elderly": [(0.7, 1.4, "normal"), (0, 0.69, "düşük"), (1.41, 999, "yüksek")]
+                },
+                "gfr": {
+                    "child": [(90, 999, "normal"), (60, 89, "hafif düşük"), (30, 59, "orta düşük"),
+                              (0, 29, "ciddi düşük")],
+                    "adult": [(90, 999, "normal"), (60, 89, "hafif düşük"), (30, 59, "orta düşük"),
+                              (0, 29, "ciddi düşük")],
+                    "elderly": [(60, 999, "normal"), (45, 59, "hafif düşük"), (30, 44, "orta düşük"),
+                                (0, 29, "ciddi düşük")]
+                }
+            },
 
-        # Serbest PSA oranı (risk değerlendirmesi)
-        "free_psa_ratio": [
-        (0.25, 1.0, "düşük risk"),
-        (0.10, 0.24, "orta risk"),
-        (0, 0.09, "yüksek risk (kanser?)")
-        ],
+            "urine_panel": {
+                "urine_protein": {
+                    "child": [(0, 150, "normal"), (151, 300, "hafif proteinüri"), (301, 9999, "nefrotik aralık")],
+                    "adult": [(0, 150, "normal"), (151, 300, "hafif proteinüri"), (301, 9999, "nefrotik aralık")]
+                },
+                "urine_rbc": {
+                    "child": [(0, 3, "normal"), (4, 999, "hematüri")],
+                    "adult": [(0, 3, "normal"), (4, 999, "hematüri")]
+                },
+                "urine_wbc": {
+                    "child": [(0, 5, "normal"), (6, 999, "lökositüri")],
+                    "adult": [(0, 5, "normal"), (6, 999, "lökositüri")]
+                },
+                "urine_ph": {
+                    "child": [(5, 7, "normal"), (0, 4.9, "asidik"), (7.1, 999, "alkalik")],
+                    "adult": [(5, 7, "normal"), (0, 4.9, "asidik"), (7.1, 999, "alkalik")]
+                }
+            },
 
-        # Kreatinin (böbrek fonksiyonu)
-        "creatinine": [
-        (0.6, 1.3, "normal"),
-        (1.4, 2.0, "hafif yüksek"),
-        (2.1, 9999, "ciddi yüksek")
-        ],
+            "prostate_panel": {
+                "psa": {
+                    "adult": [(0, 4, "normal"), (4.1, 10, "hafif yüksek"), (10.1, 999, "ciddi yüksek")],
+                    "elderly": [(0, 6, "normal"), (6.1, 10, "hafif yüksek"), (10.1, 999, "ciddi yüksek")]
+                },
+                "free_psa_ratio": {
+                    "adult": [(0.25, 1.0, "düşük risk"), (0.10, 0.24, "orta risk"), (0, 0.09, "yüksek risk")]
+                }
+            },
 
-        # Üre
-        "urea": [
-        (10, 50, "normal"),
-        (51, 100, "hafif yüksek"),
-        (101, 9999, "ciddi yüksek")
-        ],
+            "infection_panel": {
+                "crp": {
+                    "child": [(0, 5, "normal"), (6, 20, "hafif yüksek"), (21, 999, "yüksek")],
+                    "adult": [(0, 5, "normal"), (6, 20, "hafif yüksek"), (21, 999, "yüksek")]
+                },
+                "procalcitonin": {
+                    "child": [(0, 0.5, "normal"), (0.51, 2, "orta"), (2.1, 999, "ciddi yüksek")],
+                    "adult": [(0, 0.5, "normal"), (0.51, 2, "orta"), (2.1, 999, "ciddi yüksek")]
+                }
+            }
 
-        # Ürik Asit (Böbrek taşı / gut)
-        "uric_acid": [
-        (3.5, 7.2, "normal"),
-        (7.3, 9.0, "hafif yüksek"),
-        (9.1, 9999, "ciddi yüksek (gut / taş?)")
-        ],
+        },
 
-        # İdrar pH (taş tipi için kritik)
-        "urine_ph": [
-        (5.0, 7.0, "normal"),
-        (0, 4.9, "asit (ürik asit taşı?)"),
-        (7.1, 9999, "alkali (fosfat taşı?)")
-        ],
+        "imaging": {
 
-        # İdrar Protein (nefrotik sendrom)
-        "urine_protein": [
-        (0, 150, "normal"),
-        (151, 300, "hafif proteinüri"),
-        (301, 9999, "ciddi proteinüri (nefrotik aralık)")
-        ],
+            "kidney_ultrasound": {
+                "kidney_size": [(9, 12, "normal"), (0, 8.9, "küçük"), (12.1, 999, "büyük")],
+                "hydronephrosis": [(0, 0, "yok"), (1, 1, "hafif"), (2, 2, "orta"), (3, 999, "ciddi")],
+                "renal_cysts": [(0, 0, "yok"), (1, 999, "var")],
+                "stones": [(0, 0, "yok"), (1, 999, "var")]
+            },
 
-        # İdrar Albümin
-        "urine_albumin": [
-        (0, 30, "normal"),
-        (31, 300, "mikroalbüminüri"),
-        (301, 9999, "makroalbüminüri")
-         ],
+            "bladder_ultrasound": {
+                "post_void_residual": [(0, 50, "normal"), (51, 150, "orta"), (151, 999, "yüksek")],
+                "bladder_wall_thickness": [(0, 3, "normal"), (3.1, 999, "kalınlaşma")]
+            },
 
-        # ACR (Albümin/Kreatinin oranı)
-        "acr": [
-        (0, 30, "normal"),
-        (31, 300, "mikroalbüminüri"),
-        (301, 9999, "makroalbüminüri")
-        ],
+            "prostate_ultrasound": {
+                "prostate_volume": {
+                    "adult": [(15, 30, "normal"), (31, 50, "hafif büyük"), (51, 999, "ciddi büyük")]
+                }
+            },
 
-        # İdrar Nitrit (bakteriyel enfeksiyon)
-        "urine_nitrite": [
-        (0, 0, "negatif"),
-        (1, 9999, "pozitif (bakteriyel İYE)")
-        ],
+            "ct_mri": {
+                "renal_mass": [(0, 0, "yok"), (1, 999, "var")],
+                "bladder_mass": [(0, 0, "yok"), (1, 999, "var")],
+                "prostate_mass": [(0, 0, "yok"), (1, 999, "var")]
+            },
 
-        # İdrar Lökosit (enfeksiyon)
-        "urine_leukocyte": [
-        (0, 10, "normal"),
-        (11, 9999, "yüksek (İYE?)")
-        ],
+            "doppler": {
+                "renal_artery_stenosis": [(0, 0, "yok"), (1, 999, "var")],
+                "testicular_flow": [(0, 0, "normal"), (1, 999, "azalmış")]
+            }
+        },
 
-        # İdrar Kristalleri (taş öncüsü)
-        "urine_crystals": [
-        (0, 0, "yok"),
-        (1, 9999, "var (taş riski)")
-        ]
+        "clinical": {
 
+            "symptoms": {
+                "dysuria": [(0, 0, "yok"), (1, 999, "var")],
+                "frequency": [(0, 0, "yok"), (1, 999, "var")],
+                "urgency": [(0, 0, "yok"), (1, 999, "var")],
+                "flank_pain": [(0, 0, "yok"), (1, 999, "var")],
+                "hematuria": [(0, 0, "yok"), (1, 999, "var")]
+            },
 
+            "physical_exam": {
+                "cvat": [(0, 0, "yok"), (1, 999, "var")],  # costovertebral angle tenderness
+                "suprapubic_tenderness": [(0, 0, "yok"), (1, 999, "var")],
+                "testicular_swelling": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "risk_scores": {
+                "uti_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")],
+                "prostate_cancer_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")],
+                "stone_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")]
+            }
+        }
     },
 
     "rheumatology":{
 
-        # Romatoid Artrit Belirteçleri
-        "rf": [
-        (0, 14, "negatif"),
-        (15, 30, "hafif pozitif"),
-        (31, 9999, "pozitif (RA?)")
-        ],
-        "anti_ccp": [
-        (0, 20, "negatif"),
-        (21, 39, "şüpheli"),
-        (40, 9999, "pozitif (RA için spesifik)")
-        ],
+        "lab": {
 
-        # Lupus Belirteçleri
-        "ana": [
-        (0, 1, "negatif"),
-        (2, 9999, "pozitif (otoimmün?)")
-        ],
-        "anti_ds_dna": [
-        (0, 30, "normal"),
-        (31, 100, "hafif yüksek"),
-        (101, 9999, "pozitif (SLE?)")
-        ],
-        "anti_smith": [
-        (0, 1, "negatif"),
-        (2, 9999, "pozitif (SLE için spesifik)")
-        ],
+            "autoimmune_panel": {
 
-        # Sjögren Sendromu
-        "anti_ro": [
-        (0, 1, "negatif"),
-        (2, 9999, "pozitif (Sjögren / SLE?)")
-        ],
-         "anti_la": [
-        (0, 1, "negatif"),
-        (2, 9999, "pozitif (Sjögren?)")
-        ],
+                "ana": {
+                    "child": [(0, 0, "negatif"), (1, 999, "pozitif")],
+                    "adult": [(0, 0, "negatif"), (1, 999, "pozitif")],
+                    "elderly": [(0, 0, "negatif"), (1, 999, "pozitif")]
+                },
 
-        # Vaskülit Belirteçleri
-        "anca_p": [
-        (0, 1, "negatif"),
-        (2, 9999, "pozitif (MPO-ANCA / vaskülit?)")
-        ],
-        "anca_c": [
-        (0, 1, "negatif"),
-        (2, 9999, "pozitif (PR3-ANCA / vaskülit?)")
-         ],
+                "anti_dsDNA": {
+                    "child": [(0, 30, "normal"), (31, 100, "hafif yüksek"), (101, 9999, "pozitif")],
+                    "adult": [(0, 30, "normal"), (31, 100, "hafif yüksek"), (101, 9999, "pozitif")],
+                    "elderly": [(0, 40, "normal"), (41, 120, "hafif yüksek"), (121, 9999, "pozitif")]
+                },
 
-        # Skleroderma
-        "anti_scl70": [
-        (0, 1, "negatif"),
-        (2, 9999, "pozitif (skleroderma?)")
-        ],
-        "anti_centromere": [
-        (0, 1, "negatif"),
-        (2, 9999, "pozitif (CREST?)")
-        ],
+                "anti_smith": {
+                    "child": [(0, 0, "negatif"), (1, 999, "pozitif")],
+                    "adult": [(0, 0, "negatif"), (1, 999, "pozitif")],
+                    "elderly": [(0, 0, "negatif"), (1, 999, "pozitif")]
+                },
 
-        # Behçet Hastalığı
-        "crp": [
-        (0, 5, "normal"),
-        (6, 20, "hafif yüksek"),
-        (21, 50, "orta yüksek"),
-        (51, 9999, "ciddi yüksek")
-        ],
-        "esr": [
-        (0, 20, "normal"),
-        (21, 40, "hafif yüksek"),
-        (41, 9999, "yüksek")
-        ],
+                "anti_ro": {
+                    "child": [(0, 0, "negatif"), (1, 999, "pozitif")],
+                    "adult": [(0, 0, "negatif"), (1, 999, "pozitif")],
+                    "elderly": [(0, 0, "negatif"), (1, 999, "pozitif")]
+                },
 
-        # FMF (Ailevi Akdeniz Ateşi)
-        "serum_amyloid_a": [
-        (0, 6, "normal"),
-        (7, 100, "yüksek (FMF atağı?)"),
-        (101, 9999, "çok yüksek (amiloidoz riski)")
-        ],
+                "anti_la": {
+                    "child": [(0, 0, "negatif"), (1, 999, "pozitif")],
+                    "adult": [(0, 0, "negatif"), (1, 999, "pozitif")],
+                    "elderly": [(0, 0, "negatif"), (1, 999, "pozitif")]
+                }
+            },
 
-        # Otoinflamasyon / Sitokin Fırtınası
-        "ferritin": [
-        (30, 400, "normal"),
-        (401, 1000, "hafif yüksek"),
-        (1001, 9999, "ciddi yüksek (MAS / HLH?)")
-        ],
+            "arthritis_panel": {
 
-        # Ürik Asit (Gut)
-        "uric_acid": [
-        (3.5, 7.2, "normal"),
-        (7.3, 9.0, "hafif yüksek"),
-        (9.1, 9999, "ciddi yüksek (gut?)")
-        ]
+                "rf": {
+                    "child": [(0, 14, "negatif"), (15, 30, "hafif pozitif"), (31, 9999, "pozitif")],
+                    "adult": [(0, 14, "negatif"), (15, 30, "hafif pozitif"), (31, 9999, "pozitif")],
+                    "elderly": [(0, 20, "negatif"), (21, 40, "hafif pozitif"), (41, 9999, "pozitif")]
+                },
+
+                "anti_ccp": {
+                    "child": [(0, 20, "negatif"), (21, 39, "şüpheli"), (40, 9999, "pozitif")],
+                    "adult": [(0, 20, "negatif"), (21, 39, "şüpheli"), (40, 9999, "pozitif")],
+                    "elderly": [(0, 25, "negatif"), (26, 39, "şüpheli"), (40, 9999, "pozitif")]
+                }
+            },
+
+            "vasculitis_panel": {
+
+                "anca_p": {
+                    "child": [(0, 0, "negatif"), (1, 999, "pozitif")],
+                    "adult": [(0, 0, "negatif"), (1, 999, "pozitif")],
+                    "elderly": [(0, 0, "negatif"), (1, 999, "pozitif")]
+                },
+
+                "anca_c": {
+                    "child": [(0, 0, "negatif"), (1, 999, "pozitif")],
+                    "adult": [(0, 0, "negatif"), (1, 999, "pozitif")],
+                    "elderly": [(0, 0, "negatif"), (1, 999, "pozitif")]
+                }
+            },
+
+            "inflammation": {
+
+                "crp": {
+                    "child": [(0, 5, "normal"), (6, 20, "hafif yüksek"), (21, 50, "orta"), (51, 9999, "ciddi")],
+                    "adult": [(0, 5, "normal"), (6, 20, "hafif yüksek"), (21, 50, "orta"), (51, 9999, "ciddi")],
+                    "elderly": [(0, 8, "normal"), (9, 25, "hafif yüksek"), (26, 9999, "yüksek")]
+                },
+
+                "esr": {
+                    "child": [(0, 10, "normal"), (11, 20, "hafif yüksek"), (21, 9999, "yüksek")],
+                    "adult": [(0, 20, "normal"), (21, 40, "hafif yüksek"), (41, 9999, "yüksek")],
+                    "elderly": [(0, 30, "normal"), (31, 50, "hafif yüksek"), (51, 9999, "yüksek")]
+                }
+            },
+
+            "ferritin": {
+                "child": [(20, 200, "normal"), (201, 9999, "yüksek")],
+                "adult": [(30, 400, "normal"), (401, 1000, "hafif yüksek"), (1001, 9999, "ciddi yüksek")],
+                "elderly": [(40, 500, "normal"), (501, 9999, "yüksek")]
+            },
+
+            "uric_acid": {
+                "child": [(3.0, 5.5, "normal"), (5.6, 7.0, "hafif yüksek"), (7.1, 9999, "gut riski")],
+                "adult": [(3.5, 7.2, "normal"), (7.3, 9.0, "hafif yüksek"), (9.1, 9999, "gut")],
+                "elderly": [(3.5, 7.5, "normal"), (7.6, 9.5, "hafif yüksek"), (9.6, 9999, "gut")]
+            },
+
+            "serum_amyloid_a": {
+                "child": [(0, 6, "normal"), (7, 100, "yüksek"), (101, 9999, "çok yüksek")],
+                "adult": [(0, 6, "normal"), (7, 100, "yüksek"), (101, 9999, "çok yüksek")],
+                "elderly": [(0, 8, "normal"), (9, 120, "yüksek"), (121, 9999, "çok yüksek")]
+            }
+        },
+
+        "imaging": {
+
+            "joint_ultrasound": {
+                "synovitis": [(0, 0, "yok"), (1, 999, "var")],
+                "effusion": [(0, 0, "yok"), (1, 999, "var")],
+                "erosions": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "mri": {
+                "bone_marrow_edema": [(0, 0, "yok"), (1, 999, "var")],
+                "cartilage_loss": [(0, 0, "yok"), (1, 999, "var")],
+                "tendon_inflammation": [(0, 0, "yok"), (1, 999, "var")]
+            }
+        },
+
+        "clinical": {
+
+            "symptoms": {
+                "joint_pain": [(0, 0, "yok"), (1, 999, "var")],
+                "morning_stiffness": [(0, 0, "yok"), (1, 999, "var")],
+                "fatigue": [(0, 0, "yok"), (1, 999, "var")],
+                "rash": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "physical_exam": {
+                "swollen_joints": [(0, 0, "yok"), (1, 999, "var")],
+                "tender_joints": [(0, 0, "yok"), (1, 999, "var")],
+                "vasculitic_lesions": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "risk_scores": {
+                "ra_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")],
+                "sle_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")],
+                "vasculitis_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")]
+            }
+        }
+    },
+
+    "cardiovascular_surgery":{
+        "lab": {
+
+            "cardiac_preop": {
+                "hgb": {
+                    "child":     [(11.5, 15.5, "normal"), (0, 11.4, "düşük")],
+                    "adult":     [(13.5, 17.5, "normal"), (0, 13.4, "düşük")],
+                    "elderly":   [(12.5, 16.5, "normal"), (0, 12.4, "düşük")]
+                },
+                "platelets": {
+                    "child":     [(150, 450, "normal"), (0, 149, "düşük")],
+                    "adult":     [(150, 450, "normal"), (0, 149, "düşük")],
+                    "elderly":   [(150, 450, "normal"), (0, 149, "düşük")]
+                },
+                "inr": {
+                    "child":     [(0.8, 1.2, "normal"), (1.3, 999, "yüksek")],
+                    "adult":     [(0.8, 1.2, "normal"), (1.3, 999, "yüksek")],
+                    "elderly":   [(0.8, 1.3, "normal"), (1.31, 999, "yüksek")]
+                }
+            },
+
+            "cardiac_postop": {
+                "lactate": {
+                    "child":     [(0.5, 2.0, "normal"), (2.1, 4.0, "orta"), (4.1, 999, "ciddi")],
+                    "adult":     [(0.5, 2.0, "normal"), (2.1, 4.0, "orta"), (4.1, 999, "ciddi")],
+                    "elderly":   [(0.5, 2.5, "normal"), (2.6, 4.0, "orta"), (4.1, 999, "ciddi")]
+                },
+                "troponin": {
+                    "child":     [(0, 0.04, "normal"), (0.05, 999, "yüksek")],
+                    "adult":     [(0, 0.04, "normal"), (0.05, 999, "yüksek")],
+                    "elderly":   [(0, 0.05, "normal"), (0.06, 999, "yüksek")]
+                },
+                "crp": {
+                    "child":     [(0, 5, "normal"), (6, 20, "hafif"), (21, 999, "yüksek")],
+                    "adult":     [(0, 5, "normal"), (6, 20, "hafif"), (21, 999, "yüksek")],
+                    "elderly":   [(0, 8, "normal"), (9, 25, "hafif"), (26, 999, "yüksek")]
+                }
+            },
+
+            "vascular_panel": {
+                "d_dimer": {
+                    "child":     [(0, 0.5, "normal"), (0.51, 1.0, "hafif"), (1.01, 999, "yüksek")],
+                    "adult":     [(0, 0.5, "normal"), (0.51, 1.0, "hafif"), (1.01, 999, "yüksek")],
+                    "elderly":   [(0, 0.7, "normal"), (0.71, 1.2, "hafif"), (1.21, 999, "yüksek")]
+                },
+                "fibrinogen": {
+                    "child":     [(200, 400, "normal"), (401, 999, "yüksek")],
+                    "adult":     [(200, 400, "normal"), (401, 999, "yüksek")],
+                    "elderly":   [(250, 450, "normal"), (451, 999, "yüksek")]
+                }
+            }
+        },
+
+        "imaging": {
+
+            "echocardiography": {
+                "ef_percent": {
+                    "child":     [(55, 75, "normal"), (40, 54, "orta"), (0, 39, "ciddi")],
+                    "adult":     [(55, 70, "normal"), (40, 54, "orta"), (0, 39, "ciddi")],
+                    "elderly":   [(50, 65, "normal"), (40, 49, "orta"), (0, 39, "ciddi")]
+                },
+                "lv_hypertrophy": [(0, 0, "yok"), (1, 999, "var")],
+                "valve_stenosis": [(0, 0, "yok"), (1, 999, "var")],
+                "valve_regurgitation": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "ct_angiography": {
+                "coronary_stenosis": [(0, 0, "yok"), (1, 999, "var")],
+                "aortic_aneurysm": [(0, 0, "yok"), (1, 999, "var")],
+                "pulmonary_embolism": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "vascular_doppler": {
+                "carotid_stenosis": [(0, 0, "yok"), (1, 999, "var")],
+                "peripheral_artery_disease": [(0, 0, "yok"), (1, 999, "var")]
+            }
+        },
+
+        "clinical": {
+
+            "symptoms": {
+                "chest_pain": [(0, 0, "yok"), (1, 999, "var")],
+                "dyspnea": [(0, 0, "yok"), (1, 999, "var")],
+                "claudication": [(0, 0, "yok"), (1, 999, "var")],
+                "palpitations": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "physical_exam": {
+                "edema": [(0, 0, "yok"), (1, 999, "var")],
+                "cyanosis": [(0, 0, "yok"), (1, 999, "var")],
+                "murmur": [(0, 0, "yok"), (1, 999, "var")],
+                "weak_pulses": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "hemodynamics": {
+                "map": [(70, 100, "normal"), (101, 120, "hafif yüksek"), (121, 999, "ciddi yüksek"), (0, 69, "düşük")],
+                "cardiac_output": [(4, 8, "normal"), (0, 3.9, "düşük"), (8.1, 999, "yüksek")]
+            },
+
+            "risk_scores": {
+                "cabg_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")],
+                "vascular_surgery_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")]
+            }
+        },
+
+        "surgery": {
+
+            "procedures": {
+                "cabg": [(0, 0, "yapılmadı"), (1, 999, "yapıldı")],
+                "valve_replacement": [(0, 0, "yok"), (1, 999, "var")],
+                "aortic_repair": [(0, 0, "yok"), (1, 999, "var")],
+                "vascular_bypass": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "postop_complications": {
+                "bleeding": [(0, 0, "yok"), (1, 999, "var")],
+                "infection": [(0, 0, "yok"), (1, 999, "var")],
+                "arrhythmia": [(0, 0, "yok"), (1, 999, "var")],
+                "renal_failure": [(0, 0, "yok"), (1, 999, "var")]
+            }
+        }
+
+    },
+
+    "orthopedics":{
+        "lab": {
+
+            "bone_metabolism": {
+                "calcium": {
+                    "child":     [(8.8, 10.8, "normal"), (0, 8.7, "düşük"), (10.9, 999, "yüksek")],
+                    "adult":     [(8.5, 10.5, "normal"), (0, 8.4, "düşük"), (10.6, 999, "yüksek")],
+                    "elderly":   [(8.2, 10.2, "normal"), (0, 8.1, "düşük"), (10.3, 999, "yüksek")]
+                },
+                "vitamin_d": {
+                    "child":     [(20, 50, "normal"), (0, 19, "düşük"), (51, 999, "yüksek")],
+                    "adult":     [(20, 50, "normal"), (0, 19, "düşük"), (51, 999, "yüksek")],
+                    "elderly":   [(25, 60, "normal"), (0, 24, "düşük"), (61, 999, "yüksek")]
+                },
+                "alk_phosphatase": {
+                    "child":     [(150, 400, "normal"), (401, 999, "yüksek")],  # büyüme dönemi
+                    "adult":     [(40, 130, "normal"), (131, 999, "yüksek")],
+                    "elderly":   [(40, 150, "normal"), (151, 999, "yüksek")]
+                }
+            },
+
+            "inflammation": {
+                "crp": {
+                    "child":     [(0, 5, "normal"), (6, 20, "hafif"), (21, 999, "yüksek")],
+                    "adult":     [(0, 5, "normal"), (6, 20, "hafif"), (21, 999, "yüksek")],
+                    "elderly":   [(0, 8, "normal"), (9, 25, "hafif"), (26, 999, "yüksek")]
+                },
+                "esr": {
+                    "child":     [(0, 10, "normal"), (11, 20, "hafif"), (21, 999, "yüksek")],
+                    "adult":     [(0, 20, "normal"), (21, 40, "hafif"), (41, 999, "yüksek")],
+                    "elderly":   [(0, 30, "normal"), (31, 50, "hafif"), (51, 999, "yüksek")]
+                }
+            },
+
+            "muscle_panel": {
+                "ck": {
+                    "child":     [(50, 250, "normal"), (251, 9999, "yüksek")],
+                    "adult":     [(30, 200, "normal"), (201, 9999, "yüksek")],
+                    "elderly":   [(20, 180, "normal"), (181, 9999, "yüksek")]
+                }
+            }
+        },
+
+        "imaging": {
+
+            "xray": {
+                "fracture": [(0, 0, "yok"), (1, 999, "var")],
+                "dislocation": [(0, 0, "yok"), (1, 999, "var")],
+                "osteoporosis_signs": [(0, 0, "yok"), (1, 999, "var")],
+                "growth_plate_open": {
+                    "child": [(1, 1, "açık")],
+                    "adult": [(0, 0, "kapalı")]
+                }
+            },
+
+            "ct": {
+                "complex_fracture": [(0, 0, "yok"), (1, 999, "var")],
+                "bone_fragmentation": [(0, 0, "yok"), (1, 999, "var")],
+                "joint_surface_damage": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "mri": {
+                "ligament_tear": [(0, 0, "yok"), (1, 999, "var")],
+                "meniscus_tear": [(0, 0, "yok"), (1, 999, "var")],
+                "bone_marrow_edema": [(0, 0, "yok"), (1, 999, "var")],
+                "muscle_strain": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "ultrasound": {
+                "tendonitis": [(0, 0, "yok"), (1, 999, "var")],
+                "bursitis": [(0, 0, "yok"), (1, 999, "var")],
+                "effusion": [(0, 0, "yok"), (1, 999, "var")]
+            }
+        },
+
+        "clinical": {
+
+            "symptoms": {
+                "joint_pain": [(0, 0, "yok"), (1, 999, "var")],
+                "muscle_pain": [(0, 0, "yok"), (1, 999, "var")],
+                "limited_motion": [(0, 0, "yok"), (1, 999, "var")],
+                "swelling": [(0, 0, "yok"), (1, 999, "var")],
+                "instability": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "physical_exam": {
+                "tenderness": [(0, 0, "yok"), (1, 999, "var")],
+                "crepitus": [(0, 0, "yok"), (1, 999, "var")],
+                "muscle_strength": [(5, 5, "normal"), (4, 4, "hafif zayıf"), (3, 3, "orta zayıf"), (0, 2, "ciddi zayıf")],
+                "gait_abnormality": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "functional_tests": {
+                "lachman_test": [(0, 0, "negatif"), (1, 999, "pozitif")],
+                "mcmurray_test": [(0, 0, "negatif"), (1, 999, "pozitif")],
+                "squeeze_test": [(0, 0, "negatif"), (1, 999, "pozitif")]
+            },
+
+            "risk_scores": {
+                "fracture_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")],
+                "osteoporosis_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")],
+                "sports_injury_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")]
+            }
+        }
+    },
+
+    "psychiatry":{
+        "lab": {
+
+            "neurochemistry": {
+                "tsh": {
+                    "child":     [(0.6, 4.8, "normal"), (0, 0.59, "düşük"), (4.9, 999, "yüksek")],
+                    "adult":     [(0.4, 4.0, "normal"), (0, 0.39, "düşük"), (4.1, 999, "yüksek")],
+                    "elderly":   [(0.4, 5.0, "normal"), (0, 0.39, "düşük"), (5.1, 999, "yüksek")]
+                },
+                "vitamin_b12": {
+                    "child":     [(250, 1200, "normal"), (0, 249, "düşük")],
+                    "adult":     [(200, 900, "normal"), (0, 199, "düşük")],
+                    "elderly":   [(180, 800, "normal"), (0, 179, "düşük")]
+                },
+                "folate": {
+                    "child":     [(5, 20, "normal"), (0, 4.9, "düşük")],
+                    "adult":     [(3, 17, "normal"), (0, 2.9, "düşük")]
+                },
+                "vitamin_d": {
+                    "child":     [(20, 50, "normal"), (0, 19, "düşük")],
+                    "adult":     [(20, 50, "normal"), (0, 19, "düşük")],
+                    "elderly":   [(25, 60, "normal"), (0, 24, "düşük")]
+                }
+            },
+
+            "inflammation": {
+                "crp": {
+                    "child":     [(0, 5, "normal"), (6, 20, "hafif"), (21, 999, "yüksek")],
+                    "adult":     [(0, 5, "normal"), (6, 20, "hafif"), (21, 999, "yüksek")],
+                    "elderly":   [(0, 8, "normal"), (9, 25, "hafif"), (26, 999, "yüksek")]
+                },
+                "esr": {
+                    "child":     [(0, 10, "normal"), (11, 20, "hafif"), (21, 999, "yüksek")],
+                    "adult":     [(0, 20, "normal"), (21, 40, "hafif"), (41, 999, "yüksek")],
+                    "elderly":   [(0, 30, "normal"), (31, 50, "hafif"), (51, 999, "yüksek")]
+                }
+            },
+
+            "metabolic": {
+                "glucose": {
+                    "child":     [(70, 99, "normal"), (100, 125, "prediyabet"), (126, 999, "diyabet")],
+                    "adult":     [(70, 99, "normal"), (100, 125, "prediyabet"), (126, 999, "diyabet")],
+                    "elderly":   [(70, 110, "normal"), (111, 125, "prediyabet"), (126, 999, "diyabet")]
+                }
+            }
+        },
+
+        "imaging": {
+
+            "brain_mri": {
+                "atrophy": [(0, 0, "yok"), (1, 999, "var")],
+                "white_matter_changes": [(0, 0, "yok"), (1, 999, "var")],
+                "hippocampal_volume_loss": [(0, 0, "yok"), (1, 999, "var")],
+                "tumor": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "brain_ct": {
+                "hemorrhage": [(0, 0, "yok"), (1, 999, "var")],
+                "ischemia": [(0, 0, "yok"), (1, 999, "var")],
+                "mass_effect": [(0, 0, "yok"), (1, 999, "var")]
+            }
+        },
+
+        "clinical": {
+
+            "symptoms": {
+
+                "mood": {
+                    "depressed_mood": [(0, 0, "yok"), (1, 999, "var")],
+                    "anhedonia": [(0, 0, "yok"), (1, 999, "var")],
+                    "elevated_mood": [(0, 0, "yok"), (1, 999, "var")],
+                    "irritability": [(0, 0, "yok"), (1, 999, "var")]
+                },
+
+                "anxiety": {
+                    "excessive_worry": [(0, 0, "yok"), (1, 999, "var")],
+                    "panic_attacks": [(0, 0, "yok"), (1, 999, "var")],
+                    "phobias": [(0, 0, "yok"), (1, 999, "var")]
+                },
+
+                "psychosis": {
+                    "hallucinations": [(0, 0, "yok"), (1, 999, "var")],
+                    "delusions": [(0, 0, "yok"), (1, 999, "var")],
+                    "disorganized_thought": [(0, 0, "yok"), (1, 999, "var")]
+                },
+
+                "adhd": {
+                    "inattention": [(0, 0, "yok"), (1, 999, "var")],
+                    "hyperactivity": [(0, 0, "yok"), (1, 999, "var")],
+                    "impulsivity": [(0, 0, "yok"), (1, 999, "var")]
+                },
+
+                "autism": {
+                    "social_deficit": [(0, 0, "yok"), (1, 999, "var")],
+                    "restricted_interests": [(0, 0, "yok"), (1, 999, "var")],
+                    "sensory_issues": [(0, 0, "yok"), (1, 999, "var")]
+                }
+            },
+
+            "mental_status_exam": {
+                "orientation": [(1, 1, "tam"), (0, 0, "bozuk")],
+                "memory": [(1, 1, "normal"), (0, 0, "bozuk")],
+                "attention": [(1, 1, "normal"), (0, 0, "bozuk")],
+                "insight": [(1, 1, "var"), (0, 0, "yok")],
+                "judgment": [(1, 1, "normal"), (0, 0, "bozuk")]
+            },
+
+            "risk_assessment": {
+                "suicide_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")],
+                "violence_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")],
+                "substance_abuse_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")]
+            }
+        },
+
+        "psych_scales": {
+
+            "depression": {
+                "phq9": [(0, 4, "minimal"), (5, 9, "hafif"), (10, 14, "orta"), (15, 19, "orta-şiddetli"), (20, 27, "şiddetli")]
+            },
+
+            "anxiety": {
+                "gad7": [(0, 4, "minimal"), (5, 9, "hafif"), (10, 14, "orta"), (15, 21, "şiddetli")]
+            },
+
+            "bipolar": {
+                "mdq": [(0, 6, "negatif"), (7, 13, "pozitif")]
+            },
+
+            "psychosis": {
+                "bprs": [(18, 31, "hafif"), (32, 53, "orta"), (54, 126, "şiddetli")]
+            },
+
+            "dementia": {
+                "mmse": [(24, 30, "normal"), (18, 23, "hafif"), (10, 17, "orta"), (0, 9, "ciddi")]
+            }
+        }
+    },
+
+    "endocrine_surgery":{
+        "lab": {
+
+            "thyroid_panel": {
+                "tsh": {
+                    "child":     [(0.6, 4.8, "normal"), (0, 0.59, "düşük"), (4.9, 999, "yüksek")],
+                    "adult":     [(0.4, 4.0, "normal"), (0, 0.39, "düşük"), (4.1, 999, "yüksek")],
+                    "elderly":   [(0.4, 5.0, "normal"), (0, 0.39, "düşük"), (5.1, 999, "yüksek")]
+                },
+                "ft4": {
+                    "child":     [(0.9, 1.8, "normal"), (0, 0.89, "düşük"), (1.81, 999, "yüksek")],
+                    "adult":     [(0.8, 1.8, "normal"), (0, 0.79, "düşük"), (1.81, 999, "yüksek")]
+                },
+                "thyroglobulin": {
+                    "adult": [(0, 30, "normal"), (31, 9999, "yüksek")]  # cerrahi sonrası takip
+                }
+            },
+
+            "parathyroid_panel": {
+                "pth": {
+                    "child":     [(10, 65, "normal"), (0, 9.9, "düşük"), (65.1, 999, "yüksek")],
+                    "adult":     [(15, 65, "normal"), (0, 14.9, "düşük"), (65.1, 999, "yüksek")],
+                    "elderly":   [(20, 70, "normal"), (0, 19.9, "düşük"), (70.1, 999, "yüksek")]
+                },
+                "calcium": {
+                    "child":     [(8.8, 10.8, "normal"), (0, 8.7, "düşük"), (10.9, 999, "yüksek")],
+                    "adult":     [(8.5, 10.5, "normal"), (0, 8.4, "düşük"), (10.6, 999, "yüksek")],
+                    "elderly":   [(8.2, 10.2, "normal"), (0, 8.1, "düşük"), (10.3, 999, "yüksek")]
+                },
+                "phosphorus": {
+                    "child":     [(3.5, 6.0, "normal"), (0, 3.49, "düşük"), (6.1, 999, "yüksek")],
+                    "adult":     [(2.5, 4.5, "normal"), (0, 2.49, "düşük"), (4.6, 999, "yüksek")]
+                }
+            },
+
+            "adrenal_panel": {
+                "cortisol": {
+                    "child":     [(6, 23, "normal"), (0, 5.9, "düşük"), (24, 999, "yüksek")],
+                    "adult":     [(6, 23, "normal"), (0, 5.9, "düşük"), (24, 999, "yüksek")]
+                },
+                "acth": {
+                    "child":     [(10, 60, "normal"), (0, 9.9, "düşük"), (61, 999, "yüksek")],
+                    "adult":     [(10, 60, "normal"), (0, 9.9, "düşük"), (61, 999, "yüksek")]
+                },
+                "metanephrines": {
+                    "adult": [(0, 57, "normal"), (58, 9999, "yüksek")]  # feokromositoma
+                }
+            },
+
+            "neuroendocrine_panel": {
+                "chromogranin_a": {
+                    "adult": [(0, 100, "normal"), (101, 9999, "yüksek")]
+                },
+                "insulin": {
+                    "adult": [(2, 25, "normal"), (26, 9999, "yüksek")]
+                },
+                "glucagon": {
+                    "adult": [(50, 150, "normal"), (151, 9999, "yüksek")]
+                }
+            }
+        },
+
+        "imaging": {
+
+            "thyroid_ultrasound": {
+                "thyroid_nodule": [(0, 0, "yok"), (1, 999, "var")],
+                "microcalcifications": [(0, 0, "yok"), (1, 999, "var")],
+                "vascularity": [(0, 0, "normal"), (1, 999, "artmış")]
+            },
+
+            "parathyroid_ultrasound": {
+                "parathyroid_adenoma": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "adrenal_ct_mri": {
+                "adrenal_mass": [(0, 0, "yok"), (1, 999, "var")],
+                "pheochromocytoma_signs": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "pet_ct": {
+                "fdg_uptake": [(0, 2.5, "normal"), (2.6, 4.9, "orta"), (5, 999, "yüksek")]
+            }
+        },
+
+        "clinical": {
+
+            "symptoms": {
+                "neck_mass": [(0, 0, "yok"), (1, 999, "var")],
+                "hoarseness": [(0, 0, "yok"), (1, 999, "var")],
+                "heat_intolerance": [(0, 0, "yok"), (1, 999, "var")],
+                "palpitations": [(0, 0, "yok"), (1, 999, "var")],
+                "muscle_weakness": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "physical_exam": {
+                "thyroid_enlargement": [(0, 0, "yok"), (1, 999, "var")],
+                "lymphadenopathy": [(0, 0, "yok"), (1, 999, "var")],
+                "tracheal_deviation": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "risk_scores": {
+                "thyroid_cancer_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")],
+                "hyperparathyroidism_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")],
+                "adrenal_tumor_risk": [(0, 5, "düşük"), (6, 10, "orta"), (11, 999, "yüksek")]
+            }
+        },
+
+        "surgery": {
+
+            "procedures": {
+                "thyroidectomy": [(0, 0, "yok"), (1, 999, "var")],
+                "parathyroidectomy": [(0, 0, "yok"), (1, 999, "var")],
+                "adrenalectomy": [(0, 0, "yok"), (1, 999, "var")],
+                "neuroendocrine_tumor_resection": [(0, 0, "yok"), (1, 999, "var")]
+            },
+
+            "postop_complications": {
+                "hypocalcemia": [(0, 0, "yok"), (1, 999, "var")],
+                "recurrent_laryngeal_nerve_injury": [(0, 0, "yok"), (1, 999, "var")],
+                "hematoma": [(0, 0, "yok"), (1, 999, "var")],
+                "adrenal_crisis": [(0, 0, "yok"), (1, 999, "var")]
+            }
+        }
+    },
+
+    "anesthesia_icu":{
+        "lab": {
+
+            "abg": {
+                "pH": {
+                    "child":     [(7.35, 7.45, "normal"), (0, 7.34, "asidoz"), (7.46, 999, "alkaloz")],
+                    "adult":     [(7.35, 7.45, "normal"), (0, 7.34, "asidoz"), (7.46, 999, "alkaloz")],
+                    "elderly":   [(7.34, 7.45, "normal"), (0, 7.33, "asidoz"), (7.46, 999, "alkaloz")]
+                },
+                "pO2": {
+                    "child":     [(80, 100, "normal"), (60, 79, "hafif düşük"), (40, 59, "orta"), (0, 39, "ciddi")],
+                    "adult":     [(75, 100, "normal"), (60, 74, "hafif düşük"), (40, 59, "orta"), (0, 39, "ciddi")],
+                    "elderly":   [(70, 95, "normal"), (50, 69, "hafif düşük"), (30, 49, "orta"), (0, 29, "ciddi")]
+                },
+                "pCO2": {
+                    "child":     [(35, 45, "normal"), (0, 34, "düşük"), (46, 999, "yüksek")],
+                    "adult":     [(35, 45, "normal"), (0, 34, "düşük"), (46, 999, "yüksek")],
+                    "elderly":   [(35, 48, "normal"), (0, 34, "düşük"), (49, 999, "yüksek")]
+                },
+                "HCO3": {
+                    "child":     [(22, 26, "normal"), (0, 21.9, "düşük"), (26.1, 999, "yüksek")],
+                    "adult":     [(22, 26, "normal"), (0, 21.9, "düşük"), (26.1, 999, "yüksek")],
+                    "elderly":   [(23, 28, "normal"), (0, 22.9, "düşük"), (28.1, 999, "yüksek")]
+                }
+            },
+
+            "lactate": {
+                "child":     [(0.5, 2.0, "normal"), (2.1, 4.0, "orta"), (4.1, 999, "ciddi")],
+                "adult":     [(0.5, 2.0, "normal"), (2.1, 4.0, "orta"), (4.1, 999, "ciddi")],
+                "elderly":   [(0.5, 2.5, "normal"), (2.6, 4.0, "orta"), (4.1, 999, "ciddi")]
+            },
+
+            "electrolytes": {
+                "sodium": {
+                    "child":     [(135, 145, "normal"), (0, 134, "düşük"), (146, 999, "yüksek")],
+                    "adult":     [(135, 145, "normal"), (0, 134, "düşük"), (146, 999, "yüksek")],
+                    "elderly":   [(135, 147, "normal"), (0, 134, "düşük"), (148, 999, "yüksek")]
+                },
+                "potassium": {
+                    "child":     [(3.5, 5.0, "normal"), (0, 3.4, "düşük"), (5.1, 999, "yüksek")],
+                    "adult":     [(3.5, 5.0, "normal"), (0, 3.4, "düşük"), (5.1, 999, "yüksek")],
+                    "elderly":   [(3.5, 5.2, "normal"), (0, 3.4, "düşük"), (5.21, 999, "yüksek")]
+                },
+                "magnesium": {
+                    "child":     [(1.7, 2.3, "normal"), (0, 1.69, "düşük"), (2.31, 999, "yüksek")],
+                    "adult":     [(1.7, 2.2, "normal"), (0, 1.69, "düşük"), (2.21, 999, "yüksek")]
+                }
+            },
+
+            "coagulation": {
+                "inr": {
+                    "child":     [(0.8, 1.2, "normal"), (1.3, 999, "yüksek")],
+                    "adult":     [(0.8, 1.2, "normal"), (1.3, 999, "yüksek")],
+                    "elderly":   [(0.8, 1.3, "normal"), (1.31, 999, "yüksek")]
+                },
+                "ptt": {
+                    "adult": [(25, 35, "normal"), (36, 999, "uzamış")]
+                }
+            }
+        },
+
+        "imaging": {
+
+            "chest_xray": {
+                "infiltrates": [(0, 0, "yok"), (1, 999, "var")],
+                "effusion": [(0, 0, "yok"), (1, 999, "var")],
+                "tube_position": [(0, 0, "doğru"), (1, 999, "yanlış")]
+            },
+
+            "ct": {
+                "pulmonary_embolism": [(0, 0, "yok"), (1, 999, "var")],
+                "pneumonia": [(0, 0, "yok"), (1, 999, "var")],
+                "brain_edema": [(0, 0, "yok"), (1, 999, "var")]
+            }
+        },
+
+        "clinical": {
+
+            "consciousness": {
+                "gcs": [(13, 15, "normal"), (9, 12, "orta"), (3, 8, "ciddi")]
+            },
+
+            "sedation": {
+                "rass": [(0, 0, "uyumlu"), (-1, -2, "hafif sedasyon"), (-3, -5, "derin sedasyon"), (1, 4, "ajite")]
+            },
+
+            "pain": {
+                "nrs": [(0, 3, "hafif"), (4, 6, "orta"), (7, 10, "şiddetli")]
+            },
+
+            "neuromuscular": {
+                "train_of_four": [(0.9, 1.0, "normal"), (0.4, 0.89, "kısmi blok"), (0, 0.39, "tam blok")]
+            }
+        },
+
+        "ventilation": {
+
+            "ventilator_settings": {
+                "tidal_volume_mlkg": [(6, 8, "normal"), (0, 5.9, "düşük"), (8.1, 999, "yüksek")],
+                "peep": [(5, 10, "normal"), (0, 4.9, "düşük"), (11, 999, "yüksek")],
+                "fio2": [(21, 60, "normal"), (61, 100, "yüksek")]
+            },
+
+            "oxygenation": {
+                "spo2": {
+                    "child":     [(95, 100, "normal"), (90, 94, "hafif"), (80, 89, "orta"), (0, 79, "ciddi")],
+                    "adult":     [(94, 100, "normal"), (90, 93, "hafif"), (80, 89, "orta"), (0, 79, "ciddi")],
+                    "elderly":   [(92, 100, "normal"), (88, 91, "hafif"), (80, 87, "orta"), (0, 79, "ciddi")]
+                }
+            }
+        },
+
+        "hemodynamics": {
+
+            "map": [(70, 100, "normal"), (101, 120, "hafif yüksek"), (121, 999, "ciddi yüksek"), (0, 69, "düşük")],
+
+            "cardiac_output": [(4, 8, "normal"), (0, 3.9, "düşük"), (8.1, 999, "yüksek")],
+
+            "cvp": [(5, 10, "normal"), (0, 4.9, "düşük"), (10.1, 999, "yüksek")],
+
+            "vasopressor_need": [(0, 0, "yok"), (1, 999, "var")]
+        },
+
+        "drugs": {
+
+            "sedation": {
+                "propofol": [(0, 0, "yok"), (1, 999, "veriliyor")],
+                "midazolam": [(0, 0, "yok"), (1, 999, "veriliyor")]
+            },
+
+            "analgesia": {
+                "fentanyl": [(0, 0, "yok"), (1, 999, "veriliyor")],
+                "morphine": [(0, 0, "yok"), (1, 999, "veriliyor")]
+            },
+
+            "paralytics": {
+                "rocuronium": [(0, 0, "yok"), (1, 999, "veriliyor")],
+                "cisatracurium": [(0, 0, "yok"), (1, 999, "veriliyor")]
+            },
+
+            "vasopressors": {
+                "norepinephrine": [(0, 0, "yok"), (1, 999, "veriliyor")],
+                "vasopressin": [(0, 0, "yok"), (1, 999, "veriliyor")],
+                "epinephrine": [(0, 0, "yok"), (1, 999, "veriliyor")]
+            }
+        }
     }
 
 }
@@ -1299,26 +2257,29 @@ REFERENCE_RANGES = {
 #---16 Branslık tam liste---
 
 BRANCHES = [
-    "Dahiliye",
-    "Kardiyoloji",
-    "Endokrinoloji",
-    "Hematoloji",
-    "Enfeksiyon",
-    "Nefroloji",
-    "Hepatoloji",
-    "Gastroenteroloji",
-    "Pediatri",
-    "Kadın Doğum",
-    "Onkoloji",
-    "Nöroloji",
-    "Göğüs Hastalıkları",
-    "Dermatoloji",
-    "Üroloji",
-    "Romatoloji"
+     "pediatrics",
+    "cardiology",
+    "endocrinology",
+    "nephrology",
+    "gastroenterology",
+    "pulmonology",
+    "neurology",
+    "oncology",
+    "dermatology",
+    "urology",
+    "rheumatology",
+    "orthopedics",
+    "psychiatry",
+    "cardiovascular_surgery",
+    "endocrine_surgery",
+    "anesthesia_icu"
 ]
 
 
-
+def get_branch_module(branch_name):
+    if branch_name in REFERENCE_RANGES:
+        return REFERENCE_RANGES[branch_name]
+    return None
 
 
 
@@ -1825,10 +2786,11 @@ class DataAnalyseLogic:
 class DataAnalyseGUI:
     def __init__(self, root):
         self.root = root
-        self.root.geometry("800x750")
+        self.root.geometry("1400x950")
+        self.root.state("zoomed")
         self.root.title("Data Analysing Program")
-
         self.logic = DataAnalyseLogic()
+        self.current_module = None
 
         #---- Sol taraf----
         self.frame_left = tk.Frame(self.root)
@@ -1842,7 +2804,10 @@ class DataAnalyseGUI:
         self.frame_right = tk.Frame(self.root)
         self.frame_right.grid(row=0, column=2, sticky="nsew", pady=10, padx=10)
 
-         # --- Root'u Responsive Yap
+        # --Enties dict---
+        self.entries = {}
+
+        # --- Root'u Responsive Yap
         self.root.grid_rowconfigure(0,weight=1)
         self.root.grid_columnconfigure(0,weight=0)
         self.root.grid_columnconfigure(1,weight=1)
@@ -1853,9 +2818,8 @@ class DataAnalyseGUI:
         self.frame_center.grid_columnconfigure(0,weight=1)
 
         # ---frame_right responsive yap
-        for i in range(0, 8):
+        for i in range(0, 6):
             self.frame_right.grid_rowconfigure(i, weight=1)
-
         self.frame_right.grid_columnconfigure(0, weight=1)
 
         # ----VERİ YÜKLEME---
@@ -1894,31 +2858,33 @@ class DataAnalyseGUI:
         #----KOLON İSTATİKLERİ---
         self.lbl_stats_col = tk.Label(self.frame_left,text="İstatistik Kolonu")
         self.lbl_stats_col.grid(row=10,column=0,pady=5)
+
         self.combo_stats_col = ttk.Combobox(self.frame_left,state="readonly")
         self.combo_stats_col.grid(row=11,column=0,pady=5)
+
         self.button_stats = tk.Button(self.frame_left,text='Kolon İstatistikleri',command=self.mixed_stats_gui)
         self.button_stats.grid(row=12,column=0,pady=5)
 
-        self.combo_x = ttk.Combobox(self.frame_center, state="readonly")
-        self.combo_x.grid(row=1, column=0, pady=5)
+        self.combo_x = ttk.Combobox(self.frame_left, state="readonly")
+        self.combo_x.grid(row=13, column=0, pady=5)
 
-        self.combo_y = ttk.Combobox(self.frame_center, state="readonly")
-        self.combo_y.grid(row=2, column=0, pady=5)
+        self.combo_y = ttk.Combobox(self.frame_left, state="readonly")
+        self.combo_y.grid(row=14, column=0, pady=5)
 
         #--- Renk Kolon Seçimi ---
-        self.lbl_color = tk.Label(self.frame_center,text="Renk Kolonu:")
-        self.lbl_color.grid(row=3,column=0,pady=5)
+        self.lbl_color = tk.Label(self.frame_left,text="Renk Kolonu:")
+        self.lbl_color.grid(row=15,column=0,pady=5)
 
-        self.combo_color=ttk.Combobox(self.frame_center,state='readonly')
-        self.combo_color.grid(row=4,column=0,pady=5)
+        self.combo_color=ttk.Combobox(self.frame_left,state='readonly')
+        self.combo_color.grid(row=16,column=0,pady=5)
 
         #----GRAFİK ÇİZİMİ----
         self.graph_window = None
 
-        self.lbl_plot_type = tk.Label(self.frame_center,text="Grafik Türü: ")
-        self.lbl_plot_type.grid(row=5,column=0,pady=5)
+        self.lbl_plot_type = tk.Label(self.frame_left,text="Grafik Türü: ")
+        self.lbl_plot_type.grid(row=17,column=0,pady=5)
 
-        self.combo_plot_type = ttk.Combobox(self.frame_center,state="readonly",
+        self.combo_plot_type = ttk.Combobox(self.frame_left,state="readonly",
                                             values=[
                                                 'scatter',
                                                 'line',
@@ -1932,49 +2898,51 @@ class DataAnalyseGUI:
                                                 "3d_scatter",
                                                 "feature_importance"
                                             ])
-        self.combo_plot_type.grid(row=6,column=0,pady=5)
+        self.combo_plot_type.grid(row=18,column=0,pady=5)
         self.combo_plot_type.set('scatter') #varsayılan
 
-        self.btn_scatter = tk.Button(self.frame_center,text="Grafik Çiz", command=self.draw_plot)
-        self.btn_scatter.grid(row=7,column=0,pady=10)
+        self.btn_scatter = tk.Button(self.frame_left,text="Grafik Çiz", command=self.draw_plot)
+        self.btn_scatter.grid(row=19,column=0,pady=10)
 
         # HEDEF KOLON
         self.lbl_target = tk.Label(self.frame_center, text='Hedef Kolon (Label):')
-        self.lbl_target.grid(row=8, column=0, pady=5)
+        self.lbl_target.grid(row=1, column=0, pady=5)
 
         self.combo_target = ttk.Combobox(self.frame_center)
-        self.combo_target.grid(row=9, column=0, pady=5)
+        self.combo_target.grid(row=2, column=0, pady=5)
 
         #Model Seçimi
         self.lbl_model = tk.Label(self.frame_center,text="Model Türü:")
-        self.lbl_model.grid(row=10,column=0,pady=5)
+        self.lbl_model.grid(row=3,column=0,pady=5)
 
         self.combo_model = ttk.Combobox(
             self.frame_center,
             state="readonly",
             values=["RandomForest","LogisticRegression"]
         )
-        self.combo_model.grid(row=11,column=0,pady=5)
+        self.combo_model.grid(row=4,column=0,pady=5)
         self.combo_model.set("RandomForest")
 
         # ÖZELLİK KOLONLARI
         self.lbl_features = tk.Label(self.frame_center, text='Özellik Kolonları (Features):')
-        self.lbl_features.grid(row=12, column=0, pady=5)
+        self.lbl_features.grid(row=5, column=0, pady=5)
 
         self.list_features = tk.Listbox(self.frame_center, selectmode='multiple', height=10)
-        self.list_features.grid(row=13, column=0, pady=5)
+        self.list_features.grid(row=6, column=0, pady=5)
 
         self.lbl_score = tk.Label(self.frame_center, text="Henüz model eğitilmedi!")
-        self.lbl_score.grid(row=14, column=0, pady=5)
+        self.lbl_score.grid(row=7, column=0, pady=5)
 
         # ---MODEL EĞİTME---
         self.button_train = tk.Button(self.frame_center, text='Modeli Eğit', command=self.train_model)
-        self.button_train.grid(row=15, column=0, pady=10)
+        self.button_train.grid(row=8, column=0, pady=10)
 
         # ---TAHMİN---
         self.button_predict = tk.Button(self.frame_center, text='Tahmin Yap', command=self.predict_row)
-        self.button_predict.grid(row=16,column=0,pady=10)
+        self.button_predict.grid(row=9,column=0,pady=10)
 
+
+        #---Sağ panel branş seçimi---
         self.branch_var = tk.StringVar()
 
         self.branch_dropdown = ttk.Combobox(
@@ -1993,52 +2961,66 @@ class DataAnalyseGUI:
 
         self.result_label.grid(row=0, column=0, padx=10, pady=10)
         self.branch_dropdown.grid(row=1, column=0, padx=10, pady=10)
-
         self.branch_dropdown.bind("<<ComboboxSelected>>", self.on_branch_selected)
 
+        # ----Sağ panel: 3 ana bölüm----
+        self.branch_frame = tk.LabelFrame(self.frame_right,text="Branş Seçimi")
+        self.branch_frame.grid(row=2, column=0, sticky="nsew", pady=10, padx=10)
+
+        # AI sonuçları
+        self.ai_frame = tk.LabelFrame(self.frame_right,text="AI Sonuçları")
+        self.ai_frame.grid(row=3, column=0, sticky="nsew", pady=10, padx=10)
+
+        #Test alanları frame
+        self.test_frame = tk.LabelFrame(self.frame_right,text="Test Alanları")
+        self.test_frame.grid(row=4, column=0, sticky="nsew", pady=10, padx=10)
+
+        #--- SAĞ panel: Filtreleme + AI
+        self.filter_frame = tk.LabelFrame(self.frame_right,text="Filtreleme + AI")
+        self.filter_frame.grid(row=5,column=0,sticky="nsew",pady=10)
 
         #--- BASİT FİLTRELEME---
-        self.lbl_filter = tk.Label(self.frame_right,text="Veri Filtreleme:")
-        self.lbl_filter.grid(row=2,column=0,pady=5)
+        self.lbl_filter = tk.Label(self.filter_frame,text="Veri Filtreleme:")
+        self.lbl_filter.grid(row=0,column=0,pady=5)
 
-        self.combo_filter_col = ttk.Combobox(self.frame_right,state="readonly")
-        self.combo_filter_col.grid(row=3,column=0,pady=5)
+        self.combo_filter_col = ttk.Combobox(self.filter_frame,state="readonly")
+        self.combo_filter_col.grid(row=1,column=0,pady=5)
 
-        self.combo_filter_op = ttk.Combobox(self.frame_right,state="readonly",
+        self.combo_filter_op = ttk.Combobox(self.filter_frame,state="readonly",
                                             values=["<",">",">=","<=","==","!="])
-        self.combo_filter_op.grid(row=4,column=0,pady=5)
+        self.combo_filter_op.grid(row=2,column=0,pady=5)
         self.combo_filter_op.set("==")
 
-        self.entry_filter_value = tk.Entry(self.frame_right)
-        self.entry_filter_value.grid(row=5,column=0,pady=5)
+        self.entry_filter_value = tk.Entry(self.filter_frame)
+        self.entry_filter_value.grid(row=3,column=0,pady=5)
 
         #Filtreleme düğmesi
-        self.btn_apply_filter = tk.Button(self.frame_right,text="Filtre Uygula",command=self.apply_filter_button)
-        self.btn_apply_filter.grid(row=6,column=0,pady=10)
+        self.btn_apply_filter = tk.Button(self.filter_frame,text="Filtre Uygula",command=self.apply_filter_button)
+        self.btn_apply_filter.grid(row=4,column=0,pady=10)
 
-        self.btn_clear_filter = tk.Button(self.frame_right, text="Filtreyi Kaldır", command=self.clear_filter_gui)
-        self.btn_clear_filter.grid(row=8, column=0, columnspan=3, pady=5)
+        self.btn_clear_filter = tk.Button(self.filter_frame, text="Filtreyi Kaldır", command=self.clear_filter_gui)
+        self.btn_clear_filter.grid(row=5, column=0, columnspan=3, pady=5)
 
         self.btn_ai = tk.Button(
-            self.frame_right,
+            self.filter_frame,
             text="AI Analiz Yap",
             command=self.ai_analysis_button
         )
-        self.btn_ai.grid(row=9,column=0,padx=10,pady=10)
+        self.btn_ai.grid(row=6,column=0,padx=10,pady=10)
 
         # Türkce AI Yorum
         self.ai_text = tk.Text(
-            self.frame_right,
+            self.filter_frame,
             height=10,
             width=40,
             font=("Arial",11),
             wrap="word"
         )
 
-        self.ai_text.grid(row=10,column=0,padx=10,pady=10)
+        self.ai_text.grid(row=7,column=0,padx=10,pady=10)
 
-        scroll = tk.Scrollbar(self.frame_right,command=self.ai_text.yview)
-        scroll.grid(row=10,column=1,sticky="ns")
+        scroll = tk.Scrollbar(self.filter_frame,command=self.ai_text.yview)
+        scroll.grid(row=7,column=1,sticky="nsew")
         self.ai_text.config(yscrollcommand=scroll.set)
 
     def file_upload(self):
@@ -2093,6 +3075,82 @@ class DataAnalyseGUI:
         self.combo_filter_col["values"] = list(self.logic.df.columns)
 
 
+    def collect_patient_data(self):
+        patient_data = {}
+        for key ,widget in self.entries.items():
+            value = widget.get().strip()
+            if value == "":
+                continue
+            try:
+                patient_data[key] = float(value)
+            except:
+                patient_data[key] = value
+        return patient_data
+
+    def analyze_patient_data(self,patient_data,module):
+        if module is None:
+            return "Seçilen branş modül içinde bulunamadı!"
+
+        analysis_lines = []
+
+        for section_name,section_data in module.items():
+            analysis_lines.append(f"\n ---- {section_name.upper()}---")
+
+            for test_name,ranges in section_data.items():
+                if test_name not in patient_data:
+                    continue
+
+                value = patient_data[test_name]
+                result = " Referans Bulunamadı!"
+
+                if isinstance(ranges,dict):
+                    if "child" in ranges or "adult" in ranges or "elderly" in ranges:
+                        age_group = "adult"
+                        if age_group in ranges:
+                            for low, high, label in ranges[age_group]:
+                                if low <= value <= high:
+                                    result= label
+                                    break
+                    else:
+                        for low,high,label in ranges:
+                            if low <= value <= high:
+                                result = label
+                                break
+                else:
+                    for low, high, label in ranges:
+                        if low <= value <= high:
+                            result = label
+                            break
+
+                analysis_lines.append(f"{test_name} : {value} -> {result}")
+        return "\n".join(analysis_lines)
+
+
+    def create_test_fields(self,module):
+        #Önce eski test alanlarını temizle
+        for widget in self.test_frame.winfo_children():
+            widget.destroy()
+
+        #Entries sözlüğünü sıfırla
+        self.entries = {}
+
+        #Modülün içindeki tüm testleri dolaş
+        for section_name,section_data in module.items():
+            # Bölüm başlığı
+            section_label = tk.Label(self.test_frame,text=f"[{section_name.upper()}]",font=("Arial",12,"bold"))
+            section_label.pack(anchor="w",pady=(10,0))
+
+            for test_name in section_data.keys():
+                # Test Label
+                label = tk.Label(self.test_frame,text=test_name)
+                label.pack(anchor="w")
+
+                #Test Entry
+                entry = tk.Entry(self.test_frame)
+                entry.pack(anchor="w")
+
+                #Entry'yi dict.'e ekle
+                self.entries[test_name] = entry
 
     def train_model(self):
         target = self.combo_target.get()
@@ -2562,6 +3620,22 @@ class DataAnalyseGUI:
 
 
     def run_ai_analysis(self,summary):
+
+        #GUI verilerini topla
+        patient_data = self.collect_patient_data()
+
+        # Python içi analiz(modül bazlı)
+        analysis = self.analyze_patient_data(patient_data,self.current_module)
+
+        #Prompt oluştur
+        prompt = f"""
+           Hasta Özeti:
+           {summary}
+
+           Branş Modülü Analizi:
+           {analysis}
+
+           Lütfen bu verileri değerlendir."""
         try:
 
             # 2) AI worker'ı çalıştır
@@ -2620,6 +3694,18 @@ class DataAnalyseGUI:
     def on_branch_selected(self,event):
         selected = self.branch_var.get()
         self.result_label.config(text=f"Seçilen Branş:{selected}")
+
+        #Modul cek
+        self.current_module = get_branch_module(selected)
+
+        if self.current_module is None:
+            print("Bu branş için modül bulunamadı!")
+        else:
+            print("Modül başarıyla yüklendi",selected)
+
+        if self.current_module:
+            self.create_test_fields((self.current_module))
+
 
     def ai_analysis_button(self):
         summary = self.generate_full_summary()
