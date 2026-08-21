@@ -13,7 +13,6 @@ import requests
 import subprocess
 import sys
 import threading
-from googletrans import Translator
 from sklearn.preprocessing import StandardScaler
 from ui_oncology import OncologyUI
 
@@ -2773,26 +2772,20 @@ class DataAnalyseLogic:
         return report
 
     def ask_ai(self, prompt):
+        print("LOGİC.ASK_AI çağrıldı")
         try:
+            print("PROMPT:",repr(prompt))
             result = subprocess.run(
                 ["ollama", "run", "llama3"],
                 input=prompt.encode("utf-8"),
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+                stderr=subprocess.PIPE,
+                timeout=40
             )
+            print("LOGİC.ASK_AI sonucu:",repr(result))
             return result.stdout.decode("utf-8").strip()
         except Exception as e:
             return f"AI hatası: {e}"
-
-
-
-    def translate_to_turkish(self,text):
-        try:
-            translator = Translator()
-            result = translator.translate(text,src="en",dest="tr")
-            return result.text
-        except Exception as e:
-            return f"Çeviri hatası {e}"
 
 
 
@@ -3655,68 +3648,13 @@ class DataAnalyseGUI:
         thread.daemon=True
         thread.start()
 
-
-
-    def run_ai_analysis(self,summary):
-
-        #GUI verilerini topla
-        patient_data = self.collect_patient_data()
-
-        # Python içi analiz(modül bazlı)
-        analysis = self.analyze_patient_data(patient_data,self.current_module)
-
-        #Prompt oluştur
+    def translate_to_turkish(self, text):
         prompt = f"""
-           Hasta Özeti:
-           {summary}
+        Aşağıdaki metni tıbbi anlamı bozulmadan Türkçeye çevir:
 
-           Branş Modülü Analizi:
-           {analysis}
-
-           Lütfen bu verileri değerlendir."""
-        try:
-
-            # 2) AI worker'ı çalıştır
-            process = subprocess.Popen(
-            ["python","ai_worker.py"],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=False
-            )
-
-            # 3) Prompt'u AI worker'a gonder
-            ai_output_bytes,error_bytes = process.communicate(
-                summary.encode("utf-8","ignore"))
-
-            #---UTF-8 olarak oku---
-            try:
-                ai_output = ai_output_bytes.decode("utf-8","ignore")
-            except:
-                ai_output = "AI çıktısı UTF-8 olarak çözülemedi."
-
-            # --- Hata varsa UTF-8 olarak oku
-            try:
-                error=error_bytes.decode("utf-8","ignore")
-            except:
-                error=""
-
-            if error.strip():
-                self.ai_text.after(0,lambda:self.update_ai_text(f"AI hata verdi:\n{error}"))
-                return
-
-            # 4) İngilizce -> Türkçe çeviri
-            translator = Translator()
-            try:
-                turkish_output = translator.translate(ai_output,src="en",dest="tr").text
-            except:
-                turkish_output = "Çeviri yapılamadı."
-
-
-            # 5)GUI'ye  yaz
-            self.ai_text.after(0, lambda: self.update_ai_text(turkish_output))
-        except Exception as e:
-            self.ai_text.after(0,lambda:self.update_ai_text(f"AI çalışırken hata oluştu: {e}"))
+        {text}
+        """
+        return self.logic.ask_ai(prompt)
 
     def update_ai_text(self,ai_response):
         #GUİ güvenli yazma
