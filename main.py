@@ -15,6 +15,7 @@ import sys
 import threading
 from googletrans import Translator
 from sklearn.preprocessing import StandardScaler
+from ui_oncology import OncologyUI
 
 #---REFERANS ARALIKLAR TABLOSU----
 
@@ -2771,6 +2772,18 @@ class DataAnalyseLogic:
 
         return report
 
+    def ask_ai(self, prompt):
+        try:
+            result = subprocess.run(
+                ["ollama", "run", "llama3"],
+                input=prompt.encode("utf-8"),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+            return result.stdout.decode("utf-8").strip()
+        except Exception as e:
+            return f"AI hatası: {e}"
+
 
 
     def translate_to_turkish(self,text):
@@ -2784,43 +2797,75 @@ class DataAnalyseLogic:
 
 
 class DataAnalyseGUI:
-    def __init__(self, root):
+    def __init__(self, root,logic):
         self.root = root
         self.root.geometry("1400x950")
         self.root.state("zoomed")
         self.root.title("Data Analysing Program")
-        self.logic = DataAnalyseLogic()
+        self.logic = logic
         self.current_module = None
+        self.ui_oncology = None
 
         #---- Sol taraf----
         self.frame_left = tk.Frame(self.root)
         self.frame_left.grid(row=0,column=0,sticky="nsew",padx=10,pady=10)
 
+        #---Sol Orta Kısım
+        self.frame_middle_left = tk.Frame(self.root)
+        self.frame_middle_left.grid(row=0,column=1,sticky="nsew",pady=5,padx=5)
+
         # ---Orta taraf----
         self.frame_center = tk.Frame(self.root)
-        self.frame_center.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
+        self.frame_center.grid(row=0, column=2, sticky="nsew", padx=10, pady=10)
+
+        #--- Sağ Orta Kısım ----
+        self.frame_middle_right = tk.Frame(self.root)
+        self.frame_middle_right.grid(row=0,column=3,sticky="nsew",pady=5,padx=5)
 
         # ---SAĞ TARAF---
         self.frame_right = tk.Frame(self.root)
-        self.frame_right.grid(row=0, column=2, sticky="nsew", pady=10, padx=10)
+        self.frame_right.grid(row=0, column=4, sticky="nsew", pady=10, padx=10)
 
         # --Enties dict---
         self.entries = {}
 
         # --- Root'u Responsive Yap
         self.root.grid_rowconfigure(0,weight=1)
-        self.root.grid_columnconfigure(0,weight=0)
+        self.root.grid_columnconfigure(0,weight=1)
         self.root.grid_columnconfigure(1,weight=1)
         self.root.grid_columnconfigure(2,weight=2)
+        self.root.grid_columnconfigure(3,weight=1)
+        self.root.grid_columnconfigure(4,weight=1)
+
+        #----Sol Orta Kısım Respınsive---
+        self.frame_middle_left.grid_rowconfigure(0,weight=1)
+        self.frame_middle_left.grid_columnconfigure(0,weight=1)
 
         #--- frame_center responsive ---
-        self.frame_center.grid_rowconfigure(0,weight=1)
+        self.frame_center.grid_rowconfigure(0,weight=0)
+        self.frame_center.grid_rowconfigure(1, weight=0)
+        self.frame_center.grid_rowconfigure(2, weight=0)
+        self.frame_center.grid_rowconfigure(3, weight=0)
+        self.frame_center.grid_rowconfigure(4, weight=0)
+        self.frame_center.grid_rowconfigure(5, weight=0)
+        self.frame_center.grid_rowconfigure(6, weight=0)
+        self.frame_center.grid_rowconfigure(7, weight=0)
+        self.frame_center.grid_rowconfigure(8, weight=0)
+        self.frame_center.grid_rowconfigure(9, weight=0)
         self.frame_center.grid_columnconfigure(0,weight=1)
 
+        #---Sağ Orta Kısım Responsive ----
+        self.frame_middle_right.grid_rowconfigure(0,weight=1)
+        self.frame_middle_right.grid_columnconfigure(0,weight=1)
+
         # ---frame_right responsive yap
-        for i in range(0, 6):
-            self.frame_right.grid_rowconfigure(i, weight=1)
-        self.frame_right.grid_columnconfigure(0, weight=1)
+        self.frame_right.grid_rowconfigure(0,weight=0)
+        self.frame_right.grid_rowconfigure(1, weight=0)
+        self.frame_right.grid_rowconfigure(2, weight=1)
+        self.frame_right.grid_rowconfigure(3, weight=1)
+        self.frame_right.grid_rowconfigure(4, weight=1)
+        self.frame_right.grid_rowconfigure(5, weight=0)
+        self.frame_right.grid_columnconfigure(0,weight=1)
 
         # ----VERİ YÜKLEME---
         self.button_upload = tk.Button(self.frame_left, text='Veri Seti Yükle', command=self.file_upload)
@@ -2830,8 +2875,19 @@ class DataAnalyseGUI:
         self.lbl_types = tk.Label(self.frame_left, text='Sütun Türleri:')
         self.lbl_types.grid(row=2,column=0,sticky="w")
 
-        self.list_types = tk.Listbox(self.frame_left, height=6)
-        self.list_types.grid(row=3,column=0,pady=5)
+        list_frame = tk.Frame(self.frame_left)
+        list_frame.grid(row=3,column=0,sticky="nsew")
+
+        #Listbox
+        self.list_types = tk.Listbox(list_frame, height=6)
+        self.list_types.grid(row=0,column=0,pady=5)
+
+        #Scrollbar
+        list_scroll = tk.Scrollbar(list_frame,orient="vertical",command=self.list_types.yview)
+        list_scroll.grid(row=0,column=1,sticky="ns")
+
+        self.list_types.config(yscrollcommand=list_scroll.set)
+
 
         self.button_null = tk.Button(self.frame_left, text='Eksik Değer Analizi', command=self.null_analysis_gui)
         self.button_null.grid(row=4, column=0, pady=10)
@@ -2927,8 +2983,23 @@ class DataAnalyseGUI:
         self.lbl_features = tk.Label(self.frame_center, text='Özellik Kolonları (Features):')
         self.lbl_features.grid(row=5, column=0, pady=5)
 
-        self.list_features = tk.Listbox(self.frame_center, selectmode='multiple', height=10)
-        self.list_features.grid(row=6, column=0, pady=5)
+        #---Frame içine alıyorum---
+        features_frame = tk.Frame(self.frame_center)
+        features_frame.grid(row=6,column=0,sticky="nsew")
+
+        #---Fatures_frame Responsive yaptm---
+        features_frame.grid_rowconfigure(0,weight=1)
+        features_frame.grid_columnconfigure(0,weight=1)
+
+        #---Listbox---
+        self.list_features = tk.Listbox(features_frame, selectmode='multiple', height=10)
+        self.list_features.grid(row=0, column=0, sticky="nsew")
+
+        #---Scrollbar---
+        features_scroll = tk.Scrollbar(features_frame,orient="vertical",command=self.list_features.yview)
+        features_scroll.grid(row=0,column=1,sticky="ns")
+
+        self.list_features.config(yscrollcommand=features_scroll.set)
 
         self.lbl_score = tk.Label(self.frame_center, text="Henüz model eğitilmedi!")
         self.lbl_score.grid(row=7, column=0, pady=5)
@@ -2963,21 +3034,9 @@ class DataAnalyseGUI:
         self.branch_dropdown.grid(row=1, column=0, padx=10, pady=10)
         self.branch_dropdown.bind("<<ComboboxSelected>>", self.on_branch_selected)
 
-        # ----Sağ panel: 3 ana bölüm----
-        self.branch_frame = tk.LabelFrame(self.frame_right,text="Branş Seçimi")
-        self.branch_frame.grid(row=2, column=0, sticky="nsew", pady=10, padx=10)
-
-        # AI sonuçları
-        self.ai_frame = tk.LabelFrame(self.frame_right,text="AI Sonuçları")
-        self.ai_frame.grid(row=3, column=0, sticky="nsew", pady=10, padx=10)
-
-        #Test alanları frame
-        self.test_frame = tk.LabelFrame(self.frame_right,text="Test Alanları")
-        self.test_frame.grid(row=4, column=0, sticky="nsew", pady=10, padx=10)
-
         #--- SAĞ panel: Filtreleme + AI
         self.filter_frame = tk.LabelFrame(self.frame_right,text="Filtreleme + AI")
-        self.filter_frame.grid(row=5,column=0,sticky="nsew",pady=10)
+        self.filter_frame.grid(row=3,column=0,sticky="nsew",pady=10)
 
         #--- BASİT FİLTRELEME---
         self.lbl_filter = tk.Label(self.filter_frame,text="Veri Filtreleme:")
@@ -3001,12 +3060,6 @@ class DataAnalyseGUI:
         self.btn_clear_filter = tk.Button(self.filter_frame, text="Filtreyi Kaldır", command=self.clear_filter_gui)
         self.btn_clear_filter.grid(row=5, column=0, columnspan=3, pady=5)
 
-        self.btn_ai = tk.Button(
-            self.filter_frame,
-            text="AI Analiz Yap",
-            command=self.ai_analysis_button
-        )
-        self.btn_ai.grid(row=6,column=0,padx=10,pady=10)
 
         # Türkce AI Yorum
         self.ai_text = tk.Text(
@@ -3019,9 +3072,11 @@ class DataAnalyseGUI:
 
         self.ai_text.grid(row=7,column=0,padx=10,pady=10)
 
-        scroll = tk.Scrollbar(self.filter_frame,command=self.ai_text.yview)
-        scroll.grid(row=7,column=1,sticky="nsew")
+        scroll = tk.Scrollbar(self.filter_frame,orient="vertical",command=self.ai_text.yview)
+        scroll.grid(row=7,column=1,sticky="ns")
         self.ai_text.config(yscrollcommand=scroll.set)
+        tk.Frame(self.filter_frame, height=70).grid(row=8, column=0)
+
 
     def file_upload(self):
         file_path = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
@@ -3029,6 +3084,15 @@ class DataAnalyseGUI:
             return
 
         columns = self.logic.load_data(file_path)
+        if self.ui_oncology is not None:
+            print("OncologyUI bulundu -> update_rows çağrılıyor")
+            self.ui_oncology.update_rows(self.logic.df)
+        else:
+            print("OncologyUI yok -> update_rows cağırılmadı")
+
+        print("file upload içindeki self:",self)
+        print("ui_oncology var mı",hasattr(self,"ui_oncology"))
+
         # ---Target sadece kategorik kolonlar---
         categorical_cols = self.logic.df.select_dtypes(include=['object','string',"category","int64","float64"]).columns
         self.combo_target['values'] = list(categorical_cols)
@@ -3125,33 +3189,6 @@ class DataAnalyseGUI:
                 analysis_lines.append(f"{test_name} : {value} -> {result}")
         return "\n".join(analysis_lines)
 
-
-    def create_test_fields(self,module):
-        #Önce eski test alanlarını temizle
-        for widget in self.test_frame.winfo_children():
-            widget.destroy()
-
-        #Entries sözlüğünü sıfırla
-        self.entries = {}
-
-        #Modülün içindeki tüm testleri dolaş
-        for section_name,section_data in module.items():
-            # Bölüm başlığı
-            section_label = tk.Label(self.test_frame,text=f"[{section_name.upper()}]",font=("Arial",12,"bold"))
-            section_label.pack(anchor="w",pady=(10,0))
-
-            for test_name in section_data.keys():
-                # Test Label
-                label = tk.Label(self.test_frame,text=test_name)
-                label.pack(anchor="w")
-
-                #Test Entry
-                entry = tk.Entry(self.test_frame)
-                entry.pack(anchor="w")
-
-                #Entry'yi dict.'e ekle
-                self.entries[test_name] = entry
-
     def train_model(self):
         target = self.combo_target.get()
         if target == "":
@@ -3172,6 +3209,7 @@ class DataAnalyseGUI:
             self.lbl_score.config(text="Model eğitilmedi!")
             return
 
+        self.model = self.logic.model
         self.lbl_score.config(text=f"Model Başarı Oranı: {accuracy:.2f}")
         print(f"Model Başarı oranı: {accuracy:.2f}")
 
@@ -3692,6 +3730,7 @@ class DataAnalyseGUI:
         self.ask_ai_async(self.generate_full_summary())
 
     def on_branch_selected(self,event):
+        print("Branş seçildi",self.branch_var.get())
         selected = self.branch_var.get()
         self.result_label.config(text=f"Seçilen Branş:{selected}")
 
@@ -3700,25 +3739,41 @@ class DataAnalyseGUI:
 
         if self.current_module is None:
             print("Bu branş için modül bulunamadı!")
+            return
         else:
             print("Modül başarıyla yüklendi",selected)
 
-        if self.current_module:
-            self.create_test_fields((self.current_module))
+        # --- Yeni mimari: branş UI aç ---
+        if selected == "oncology":
+            from ui_oncology import OncologyUI
+            new_window = tk.Toplevel(self.root)
+            self.ui_oncology = OncologyUI(new_window, self.logic, self.current_module,self)
+
+            #CSV yüklenmişse satırları doldur
+            if hasattr(self.logic,"df") and self.logic.df is not None:
+                print("CSV zaten vardı -> update_rows çağrılıyor")
+                self.ui_oncology.update_rows(self.logic.df)
+        elif selected == "cardiology":
+            from ui_cardiology import CardiologyUI
+            new_window = tk.Toplevel(self.root)
+            CardiologyUI(new_window, self.logic, self.current_module,self)
+
+        elif selected == "neurology":
+            from ui_neurology import NeurologyUI
+            new_window = tk.Toplevel(self.root)
+            NeurologyUI(new_window, self.logic, self.current_module,self)
+
+        else:
+            print("Bu branş için UI henüz oluşturulmadı.")
+
+        print("ui_oncology oluşturuldu: ",hasattr(self,"ui_oncology"))
+        print("self",self)
 
 
-    def ai_analysis_button(self):
-        summary = self.generate_full_summary()
-
-        if not summary.strip():
-            print("AI analiz için yeterli veri yok!")
-            return
-
-        self.ask_ai_async(summary)
 
 if __name__ == "__main__":
     root = tk.Tk()
     root.tk.call("encoding","system","utf-8")
-
-    app = DataAnalyseGUI(root)
+    logic = DataAnalyseLogic()
+    gui = DataAnalyseGUI(root,logic)
     root.mainloop()
