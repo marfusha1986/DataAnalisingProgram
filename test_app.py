@@ -36,7 +36,7 @@ class TestDataAnaliseApp(unittest.TestCase):
         self.assertIn('radius_mean',numeric_cols)
 
     def test_model_training(self):
-        file_path = os.path.join(os.path.dirname(__file__),"archive/Breast_cancer_dataset.csv")
+        file_path = os.path.join(os.path.dirname(__file__), "BreastCancer/Breast_cancer_dataset.csv")
         self.logic.load_data(file_path)
         acc = self.logic.train('diagnosis',['radius_mean','texture_mean'])
         self.assertGreater(acc,0)

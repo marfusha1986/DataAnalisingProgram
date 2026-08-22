@@ -298,6 +298,73 @@ class OncologyUI:
         for i in range(len(df)):
             self.list_rows.insert(tk.END,f"Satır {i+1}")
 
+    def analyze_values(self, row):
+        score = 0
+        analysis = {}
+
+        # --- symmetry_worst ---
+        sym = row.get("symmetry_worst")
+        if sym not in (None, "bilinmiyor"):
+            if sym > 0.3:
+                score += 20
+                analysis["symmetry_worst"] = "Asimetri yüksek"
+            elif sym > 0.2:
+                score += 10
+                analysis["symmetry_worst"] = "Asimetri orta"
+            else:
+                analysis["symmetry_worst"] = "Asimetri düşük"
+
+        # --- fractal_dimension_worst ---
+        fd = row.get("fractal_dimension_worst")
+        if fd not in (None, "bilinmiyor"):
+            if fd < 0.06:
+                score += 20
+                analysis["fractal_dimension_worst"] = "Fraktal boyut düşük (malignite riski)"
+            elif fd < 0.08:
+                score += 10
+                analysis["fractal_dimension_worst"] = "Fraktal boyut orta"
+            else:
+                analysis["fractal_dimension_worst"] = "Fraktal boyut yüksek"
+
+        # --- concavity_worst ---
+        conc = row.get("concavity_worst")
+        if conc not in (None, "bilinmiyor"):
+            if conc > 0.3:
+                score += 25
+                analysis["concavity_worst"] = "Konvekslik kaybı yüksek"
+            elif conc > 0.15:
+                score += 10
+                analysis["concavity_worst"] = "Konvekslik kaybı orta"
+            else:
+                analysis["concavity_worst"] = "Konvekslik kaybı düşük"
+
+        # --- radius_mean ---
+        rad = row.get("radius_mean")
+        if rad not in (None, "bilinmiyor"):
+            if rad > 20:
+                score += 15
+                analysis["radius_mean"] = "Tümör çapı büyük"
+            elif rad > 15:
+                score += 10
+                analysis["radius_mean"] = "Tümör çapı orta"
+            else:
+                analysis["radius_mean"] = "Tümör çapı küçük"
+
+        # --- texture_mean ---
+        tex = row.get("texture_mean")
+        if tex not in (None, "bilinmiyor"):
+            if tex > 25:
+                score += 10
+                analysis["texture_mean"] = "Doku heterojenliği yüksek"
+            elif tex > 20:
+                score += 5
+                analysis["texture_mean"] = "Doku heterojenliği orta"
+            else:
+                analysis["texture_mean"] = "Doku homojen"
+
+        # --- Final skor ---
+        analysis["aggressiveness_score"] = score
+        return analysis
 
     def on_row_selected(self,event):
         selection = self.list_rows.curselection()
@@ -320,49 +387,6 @@ class OncologyUI:
             entry.insert(0,value)
 
 
-    def collect_values(self):
-        results = {}
-        for col,entry in self.entries.items():
-            value = entry.get().strip()
-            if value == "":
-                continue
-            try:
-                value = float(value)
-            except:
-                pass
-            results[col] = value
-        return results
-
-    def analyze_values(self,values):
-        analysis = {}
-
-        worst_vals = []
-        mean_vals = []
-        se_vals = []
-
-        for key, val in values.items():
-            if isinstance(val, (int, float)):
-                if "worst" in key:
-                    worst_vals.append(val)
-                elif "mean" in key:
-                    mean_vals.append(val)
-                elif "se" in key:
-                    se_vals.append(val)
-
-            # Agresiflik skoru (worst değerlerinin ortalaması)
-        if worst_vals:
-            analysis["aggressiveness_score"] = round(sum(worst_vals) / len(worst_vals), 4)
-
-            # Genel risk skoru (mean değerlerinin ortalaması)
-        if mean_vals:
-            analysis["general_risk_score"] = round(sum(mean_vals) / len(mean_vals), 4)
-
-            # Varyasyon skoru (se değerlerinin ortalaması)
-        if se_vals:
-            analysis["variation_score"] = round(sum(se_vals) / len(se_vals), 4)
-
-        return analysis
-
     def generate_report(self,analysis):
         lines = []
         for test,status in analysis.items():
@@ -370,25 +394,32 @@ class OncologyUI:
         return "\n".join(lines)
 
     def run_analysis(self):
-        # 1) Entry’lerden veri topla
-        values = self.collect_values()
+        selected = self.list_rows.curselection()
+        if not selected:
+            self.ai_textbox.delete("1.0", "end")
+            self.ai_textbox.insert("end", "Lütfen bir satır seçin.\n")
+            return
 
-        # 2) Python içi analiz (yüksek/düşük vb.)
-        analysis = self.analyze_values(values)
-        score = (analysis.get("aggressiveness_score"))
+        idx = selected[0]
+
+        # CSV satırını al ve nan değerleri temizle
+        row = self.logic.df.iloc[idx].fillna("bilinmiyor")
+
+        # Python içi analiz
+        analysis = self.analyze_values(row)
+        score = analysis.get("aggressiveness_score", 0)
+
         self.update_risk_label(score)
         self.update_risk_bar(score)
-        print("RUN_ANALYSIS ÇAĞRILDI")
 
-        #3)CSV satırından klinik bulgu oluştur
-        prompt = self.build_clinical_prompt()
+        # Prompt oluştur
+        prompt = self.build_clinical_prompt(row)
 
-        #4)Textbox'ı temizle
-
+        # Textbox temizle
         self.ai_textbox.delete("1.0", "end")
         self.ai_textbox.insert("end", "AI analiz ediliyor...\n")
 
-        # ASENKRON AI çağrısı
+        # Asenkron AI çağrısı
         self.ask_ai_async(prompt)
 
     def ai_analysis_button(self):
@@ -472,10 +503,9 @@ class OncologyUI:
         print("THREAD başlatıldı")
 
 
-    def build_clinical_prompt(self):
-        row_data =self.logic.df.iloc[self.selected_row_index]
+    def build_clinical_prompt(self,row):
 
-        bulgu_text = "\n".join([f"{col} = {row_data[col]}" for col in row_data.index])
+        bulgu_text = "\n".join([f"{col} = {row[col]}" for col in row.index])
         prompt = f"""
         Aşağıdaki veriler bir hastanın klinik bulgularıdır.
         Bu bulgulara göre olası klinik tanıları üret.
