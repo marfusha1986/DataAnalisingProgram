@@ -114,6 +114,7 @@ class OncologyUI:
         self.list_rows.bind("<Enter>", lambda e: e.widget.config(bg="#f7fbff"))
         self.list_rows.bind("<Leave>", lambda e: e.widget.config(bg="#ffffff"))
 
+
         # Scrollbar
         scroll = ttk.Scrollbar(
             self.list_frame,
@@ -143,21 +144,54 @@ class OncologyUI:
 
         self.next_row += 1
 
+        # --- STYLE (CSS benzeri) ---
+        style = ttk.Style()
+        style.theme_use("clam")
+
+        # Scrollbar stili
+        style.configure(
+            "Vertical.TScrollbar",
+            gripcount=0,
+            background="#3A3A3A",
+            darkcolor="#2E2E2E",
+            lightcolor="#4A4A4A",
+            troughcolor="#1E1E1E",
+            bordercolor="#1E1E1E",
+            arrowcolor="#D0D0D0"
+        )
+
+        # Textbox stili (arka plan + yazı rengi)
         self.ai_textbox = tk.Text(
             self.scroll_frame,
-            height=10,
+            wrap="word",
+            height=15,
             width=60,
-            font=("Segoe UI", 11),
-            bg="#ffffff",
-            fg="#333333",
-            relief="solid",
-            bd=1,
-            highlightthickness=1,
-            highlightbackground="#cccccc",
-            highlightcolor="#4da6ff",
-            wrap="word"
+            bg="#1E1E1E",  # koyu arka plan
+            fg="#FF5555",  # açık yazı
+            insertbackground="#FFFFFF",  # imleç rengi
+            relief="flat",
+            padx=10,
+            pady=10
         )
-        self.ai_textbox.grid(row=self.next_row, column=0, columnspan=2, padx=10, pady=5, sticky="nsew")
+        self.ai_textbox.grid(row=self.next_row, column=0, sticky="nsew")
+        self.ai_textbox.tag_config("error", foreground="#FF4444")
+        self.ai_textbox.tag_config("normal", foreground="#000000")
+
+        # Scrollbar
+        scroll = ttk.Scrollbar(
+            self.scroll_frame,
+            orient="vertical",
+            command=self.ai_textbox.yview,
+            style="Vertical.TScrollbar"
+        )
+        scroll.grid(row=self.next_row, column=1, sticky="ns")
+
+        # Textbox scroll bağlantısı
+        self.ai_textbox.configure(yscrollcommand=scroll.set)
+
+        # Grid genişleme
+        self.scroll_frame.rowconfigure(self.next_row, weight=1)
+        self.scroll_frame.columnconfigure(0, weight=1)
 
         self.next_row += 1
         # Hover efekti
@@ -269,8 +303,8 @@ class OncologyUI:
         selection = self.list_rows.curselection()
         if not selection:
             return
-        index = selection[0]
-        row = self.logic.df.iloc[index]
+        self.selected_row_index = selection[0]
+        row = self.logic.df.iloc[self.selected_row_index]
 
         for col ,entry in self.entries.items():
             value = row.get(col,"")
@@ -346,56 +380,13 @@ class OncologyUI:
         self.update_risk_bar(score)
         print("RUN_ANALYSIS ÇAĞRILDI")
 
-        # 3) AI’ya klinik rapor formatı
-        prompt = f"""
-    Sen bir klinik karar destek sistemisin.
-    Aşağıdaki veriler bir hastanın onkolojik değerlendirmesine aittir.
+        #3)CSV satırından klinik bulgu oluştur
+        prompt = self.build_clinical_prompt()
 
-    ===========================
-    📌 HASTA VERİLERİ
-    ===========================
-    {values}
+        #4)Textbox'ı temizle
 
-    ===========================
-    📌 PYTHON ÖN ANALİZİ
-    ===========================
-    {analysis}
-
-    ===========================
-    📌 GÖREVİN
-    ===========================
-    Bu hastayı klinik olarak değerlendir ve aşağıdaki bölümleri oluştur:
-
-    1) **Klinik Yorum**
-       - Tüm laboratuvar, görüntüleme ve klinik bulguları birlikte değerlendir
-       - Bulguların ne anlama geldiğini açıkla
-
-    2) **Olası Tanılar**
-       - En olası tanıları listele
-       - Her tanı için kısa açıklama yap
-
-    3) **Risk Değerlendirmesi**
-       - Malignite riski
-       - Agresiflik riski
-       - Metastaz ihtimali
-
-    4) **Ek Test Önerileri**
-       - Gerekli laboratuvar testleri
-       - Gerekli görüntüleme yöntemleri (MRI, PET-CT, USG vb.)
-       - Gerekliyse biyopsi öner
-
-    5) **Tedavi / Yönetim Önerileri**
-       - Acil yapılması gerekenler
-       - Takip planı
-       - Gerekli konsültasyonlar (Onkoloji, Radyoloji vb.)
-
-    6) **Kısa Klinik Özet**
-       - 3–4 cümlelik genel değerlendirme
-
-    Yanıtın profesyonel, düzenli ve klinik formatta olsun.
-    """
-        self.ai_textbox.delete("1.0", tk.END)
-        self.ai_textbox.insert(tk.END, "AI analiz ediliyor...\n")
+        self.ai_textbox.delete("1.0", "end")
+        self.ai_textbox.insert("end", "AI analiz ediliyor...\n")
 
         # ASENKRON AI çağrısı
         self.ask_ai_async(prompt)
@@ -449,64 +440,52 @@ class OncologyUI:
             self.risk_bar["value"] = 0
             return
 
+        self.risk_bar["maximum"] = 200
+
         # score 0–1 arası normalize ediliyor
-        value = min(max(score * 100, 0), 100)
+        value = min(max(score, 0), 200)
         self.risk_bar["value"] = value
 
-    def display_ai_report(self, report):
-        print("REPORT RAW: ", repr(report))
-        self.ai_textbox.delete("1.0", tk.END)
+    def on_ai_result(self, ai_output):
+        self.ai_textbox.delete("1.0", "end")
 
-        sections = report.split("\n")
-
-        for line in sections:
-            clean = line.strip().replace(":", "").replace("：", "")
-
-            if clean in [
-                "Klinik Yorum",
-                "Olası Tanılar",
-                "Risk Değerlendirmesi",
-                "Ek Test Önerileri",
-                "Tedavi / Yönetim Önerileri",
-                "Kısa Klinik Özet"
-            ]:
-                self.ai_textbox.insert(tk.END, line + "\n", "title")
-
-            elif line.strip().endswith(":"):
-                self.ai_textbox.insert(tk.END, line + "\n", "section")
-
-            else:
-                self.ai_textbox.insert(tk.END, line + "\n", "text")
+        if not ai_output or "AI hatası" in ai_output or ai_output.strip() == "":
+            self.ai_textbox.insert("end","AI cevap vermedi","error")
+            return
+        else:
+            self.ai_textbox.insert("end", ai_output,"normal")
 
     def ask_ai_async(self, prompt):
         print("ASK_AI_ASYNC çağrıldı")
         def worker():
             print("WORKER başladı")
             try:
-                result = self.logic.ask_ai(prompt)
-                print("AI RAW: ", repr(result))
-            # Türkçeye çevir
-                translated = self.translate_to_turkish(result)
-                print("AI TR:", repr(translated))
-                self.root.after(0, lambda: self.on_ai_result(translated))
+                ai_output = self.logic.ask_ai(prompt)
+                print("AI RAW: ", repr(ai_output))
+
+                self.root.after(0, lambda: self.on_ai_result(ai_output))
                 print("AFTER çağrıldı")
             except Exception as e:
                 print("WORKER HATASI:",e)
 
-        threading.Thread(target=worker, daemon=True).start()
+        thread = threading.Thread(target=worker, daemon=True).start()
         print("THREAD başlatıldı")
 
-    def translate_to_turkish(self, text):
+
+    def build_clinical_prompt(self):
+        row_data =self.logic.df.iloc[self.selected_row_index]
+
+        bulgu_text = "\n".join([f"{col} = {row_data[col]}" for col in row_data.index])
         prompt = f"""
-        Aşağıdaki metni tıbbi anlamı bozulmadan Türkçeye çevir:
+        Aşağıdaki veriler bir hastanın klinik bulgularıdır.
+        Bu bulgulara göre olası klinik tanıları üret.
+        Tanı üretirken sadece tıbbi bilgi kullan.
+        Python analizinden bahsetme.
+        Metni çevirme.
+        Risk skoru hesapla.
+        Sadece klinik tanı ver.
 
-        {text}
+        Klinik Bulgular:
+        {bulgu_text}
         """
-        return self.logic.ask_ai(prompt)
-
-
-
-    def on_ai_result(self, translated):
-        self.display_ai_report(translated)
-
-
+        return prompt

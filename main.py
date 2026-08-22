@@ -13,6 +13,7 @@ import requests
 import subprocess
 import sys
 import threading
+import re
 from sklearn.preprocessing import StandardScaler
 from ui_oncology import OncologyUI
 
@@ -2771,21 +2772,66 @@ class DataAnalyseLogic:
 
         return report
 
+
+    # ANSI temizleyici
+    def clean_ansi(self, text):
+        if not text:
+            return ""
+        # Tüm ANSI escape kodlarını temizler
+        return re.sub(r'\x1b\[[0-9;]*[A-Za-z]', '', text)
+
+    # Klinik analiz
+
     def ask_ai(self, prompt):
-        print("LOGİC.ASK_AI çağrıldı")
+        print("LOGIC.ASK_AI çağrıldı")
         try:
-            print("PROMPT:",repr(prompt))
+            print("PROMPT:", repr(prompt))
+
             result = subprocess.run(
-                ["ollama", "run", "llama3"],
-                input=prompt.encode("utf-8"),
+                ["ollama", "run", "llama3.1:8b"],
+                input=prompt,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                timeout=40
-            )
-            print("LOGİC.ASK_AI sonucu:",repr(result))
-            return result.stdout.decode("utf-8").strip()
+                timeout=240,
+                text=True,# stdout'u str olarak alır
+                encoding="utf-8"
+                )
+
+            raw = result.stdout
+            print("RAW AI:", repr(raw))
+
+            clean = self.clean_ansi(raw)
+            print("CLEAN AI:", repr(clean))
+
+            return clean.strip()
+
         except Exception as e:
             return f"AI hatası: {e}"
+
+    # Çeviri
+    def ask_ai_translate(self, text):
+        print("LOGIC.ASK_AI_TRANSLATE çağrıldı")
+        try:
+            result = subprocess.run(
+                ["ollama", "run", "llama3.1:8b"],
+                input=text,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=120,
+                text=True,
+                encoding="utf-8"
+                )
+
+            raw = result.stdout
+            print("RAW TR:", repr(raw))
+
+            clean = self.clean_ansi(raw)
+            print("CLEAN TR:", repr(clean))
+
+            return clean.strip()
+
+        except Exception as e:
+            return f"AI TRANSLATE hatası: {e}"
 
 
 
