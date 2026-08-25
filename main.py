@@ -16,6 +16,9 @@ import threading
 import re
 from sklearn.preprocessing import StandardScaler
 from ui_oncology import OncologyUI
+from ui_cardiology import CardiologyUI
+from ui_neurology import NeurologyUI
+from ui_internal_disease import InternalDiseaseUI
 
 
 #---16 Branslık tam liste---
@@ -36,7 +39,8 @@ BRANCHES = [
     "psychiatry",
     "cardiovascular_surgery",
     "endocrine_surgery",
-    "anesthesia_icu"
+    "anesthesia_icu",
+    "internal_disease"
 ]
 
 class DataAnalyseLogic:
@@ -562,8 +566,6 @@ class DataAnalyseLogic:
 
         except Exception as e:
             return f"AI TRANSLATE hatası: {e}"
-
-
 
 class DataAnalyseGUI:
     def __init__(self, root,logic):
@@ -1419,6 +1421,14 @@ class DataAnalyseGUI:
 
         return summary[:3000]
 
+    def run_ai_analysis(self, summary):
+        try:
+            result = self.logic.ask_ai(summary)
+            self.ai_text.delete("1.0", "end")
+            self.ai_text.insert("end", result)
+        except Exception as e:
+            self.ai_text.insert("end", f"\n\nAI analiz hatası: {e}")
+
     def ask_ai_async(self,summary):
         thread = threading.Thread(target=self.run_ai_analysis,args=(summary,))
         thread.daemon=True
@@ -1473,13 +1483,26 @@ class DataAnalyseGUI:
         elif selected == "neurology":
             from ui_neurology import NeurologyUI
             new_window = tk.Toplevel(self.root)
-            NeurologyUI(new_window, self.logic, self.current_module,self)
+            self.ui_neurology =NeurologyUI(new_window, self.logic, self.current_module,self)
+
+            if hasattr(self.logic,"df") and self.logic.df is not None:
+                print("CSV zaten vardı -> update_rows çağrılıyor")
+                self.ui_neurology.update_rows(self.logic.df)
+
+        elif selected == "internal_disease":
+            from ui_internal_disease import InternalDiseaseUI
+            new_window = tk.Toplevel(self.root)
+            self.ui_internal_disease = InternalDiseaseUI(new_window, self.logic, self.current_module, self)
+
+            if hasattr(self.logic, "df") and self.logic.df is not None:
+                print("CSV zaten vardı -> update_rows çağrılıyor")
+                self.ui_internal_disease.update_rows(self.logic.df)
+
 
         else:
             print("Bu branş için UI henüz oluşturulmadı.")
 
-        print("ui_oncology oluşturuldu: ",hasattr(self,"ui_oncology"))
-        print("self",self)
+
 
 
 
