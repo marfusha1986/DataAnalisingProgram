@@ -45,7 +45,7 @@ class InternalDiseaseUI:
 
         title = tk.Label(
                 self.scroll_frame,
-                text="Neurology Data Entry",
+                text="Internal Disease Data Entry",
                 font=("Segoe UI", 18, "bold"),
                 fg="#aa0000",
                 bg="#f2f2f2"
@@ -63,70 +63,13 @@ class InternalDiseaseUI:
 
         canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
+
         self.create_dynamic_fields()
 
-        self.list_frame = tk.LabelFrame(
-                self.scroll_frame,
-                text="AI Liste",
-                font=("Segoe UI", 12, "bold"),
-                fg="#0055aa",
-                bg="#f2f2f2",
-                bd=2,
-                relief="groove",
-                padx=10,
-                pady=10
-        )
-        self.list_frame.grid(row=self.next_row, column=0, columnspan=2, sticky="nsew", pady=10)
+        self.build_row_list()
 
-        # Frame grid ayarları
-        self.list_frame.grid_rowconfigure(0, weight=1)
-        self.list_frame.grid_columnconfigure(0, weight=1)
+        self.update_rows(self.logic.df)
 
-        # --- MODERN SCROLLBAR STYLE ---
-        style = ttk.Style()
-        style.theme_use("clam")
-
-        style.configure(
-                "Vertical.TScrollbar",
-                background="#dddddd",
-                troughcolor="#f2f2f2",
-                bordercolor="#cccccc",
-                arrowcolor="#0055aa"
-        )
-
-        # Satır seçme listesi (CSV satırlar için)
-        self.list_rows = tk.Listbox(
-            self.list_frame,
-                font=("Segoe UI", 11),
-                height=6,
-                bg="#ffffff",
-                fg="#333333",
-                selectbackground="#cce6ff",
-                selectforeground="#000000",
-                relief="solid",
-                bd=1,
-                highlightthickness=1,
-                highlightbackground="#cccccc",
-                highlightcolor="#4da6ff"
-        )
-        self.list_rows.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
-
-        self.list_rows.bind("<Enter>", lambda e: e.widget.config(bg="#f7fbff"))
-        self.list_rows.bind("<Leave>", lambda e: e.widget.config(bg="#ffffff"))
-
-        # Scrollbar
-        scroll = ttk.Scrollbar(
-                self.list_frame,
-                orient="vertical",
-                command=self.list_rows.yview,
-                style="Vertical.TScrollbar"
-        )
-        scroll.grid(row=0, column=1, sticky="ns")
-
-        self.list_rows.config(yscrollcommand=scroll.set)
-
-        # Satır seçme event
-        self.list_rows.bind("<<ListboxSelect>>", self.on_row_selected)
         self.next_row += 1
 
         # --- AI ÇIKTI ALANI ---
@@ -227,6 +170,58 @@ class InternalDiseaseUI:
         # --- ALT BOŞLUK ---
         tk.Frame(self.scroll_frame, height=50).grid(row=self.next_row, column=0)
 
+    def build_row_list(self):
+        style = ttk.Style()
+        style.theme_use("clam")
+        style.configure("Treeview",
+                        background="#1e1e1e",
+                        foreground="#d4d4d4",
+                        fieldbackground="#1e1e1e",
+                        rowheight=24)
+        style.map("Treeview",
+                  background=[("selected", "#3a3a3a")],
+                  foreground=[("selected", "#ffffff")])
+
+        self.list_frame = tk.LabelFrame(
+            self.scroll_frame,
+            text="AI Liste",
+            font=("Segoe UI", 12, "bold"),
+            fg="#d4d4d4",
+            bg="#1e1e1e",
+            bd=2,
+            relief="groove",
+            padx=10,
+            pady=10
+        )
+        self.list_frame.grid(row=self.next_row, column=0, columnspan=2, sticky="nsew", pady=10)
+
+        self.tree_scroll = tk.Scrollbar(self.list_frame)
+        self.tree_scroll.pack(side="right", fill="y")
+
+        self.tree = ttk.Treeview(
+            self.list_frame,
+            yscrollcommand=self.tree_scroll.set,
+            columns=("index",),
+            show="headings",
+            height=10
+        )
+
+        self.tree.heading("index", text="Satır")
+        self.tree.column("index", width=120, anchor="center")
+
+        self.tree.pack(side="left", fill="both", expand=True)
+
+        self.tree_scroll.config(command=self.tree.yview)
+
+        self.tree.bind("<<TreeviewSelect>>", self.on_row_selected)
+
+        def _on_tree_mousewheel(event):
+            self.tree.yview_scroll(int(-1 * (event.delta / 120)), "units")
+            return 'break'
+
+        self.tree.bind("<MouseWheel>", _on_tree_mousewheel)
+        self.tree.bind("<<TreeviewSelect>>", self.on_row_selected)
+
     def create_dynamic_fields(self):
         columns = list(self.logic.df.columns)
 
@@ -268,15 +263,13 @@ class InternalDiseaseUI:
         print("Label sayısı:", len(self.labels))
 
     def update_rows(self, df):
-        print("UPDATE_ROWS ÇAĞRILDI, satır sayısı:", len(df))
-        print("UPDATE_ROWS SELF:", self)
-        print("LISTBOX:", self.list_rows)
-        self.root.lift()
-        self.root.focus_force()
+        # Treeview'i temizle
+        for item in self.tree.get_children():
+            self.tree.delete(item)
 
-        self.list_rows.delete(0, tk.END)
+        # Satırları ekle
         for i in range(len(df)):
-            self.list_rows.insert(tk.END, f"Satır {i + 1}")
+            self.tree.insert("", "end", values=(f"Satır {i + 1}",))
 
     def analyze_values(self, row):
         analysis = {}
@@ -365,12 +358,18 @@ class InternalDiseaseUI:
         return analysis
 
     def on_row_selected(self, event):
-        selection = self.list_rows.curselection()
+        selection = self.tree.curselection()
         if not selection:
             return
 
-        self.selected_row_index = selection[0]
+        item = self.tree.item(selection[0])
+        satir_text = item["values"][0]
+
+        index = int(satir_text.split()[1]) - 1
+        self.selected_row_index = index
+
         row = self.logic.df.iloc[self.selected_row_index]
+
         # Entry doldurma
         if hasattr(self, "entries"):
             for col, entry in self.entries.items():
