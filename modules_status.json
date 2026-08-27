@@ -1,4 +1,6 @@
 {
   "oncology": "completed",
-  "cardiology": "completed"
+  "cardiology": "completed",
+  "neurology": "completed",
+  "internal_disease": "completed"
 }
