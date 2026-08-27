@@ -571,7 +571,10 @@ class DataAnalyseGUI:
     def __init__(self, root,logic):
         self.root = root
         self.root.geometry("1400x950")
-        self.root.state("zoomed")
+        try:
+            self.root.state("zoomed")
+        except:
+            self.root.attributes("-zoomed",True)
         self.root.title("Data Analysing Program")
         self.logic = logic
         self.current_module = None
