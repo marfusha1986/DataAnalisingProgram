@@ -1,6 +1,8 @@
 import tkinter as tk
 from tkinter import ttk
 import threading
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 class InternalDiseaseUI:
@@ -170,6 +172,7 @@ class InternalDiseaseUI:
         # --- ALT BOŞLUK ---
         tk.Frame(self.scroll_frame, height=50).grid(row=self.next_row, column=0)
 
+
     def build_row_list(self):
         style = ttk.Style()
         style.theme_use("clam")
@@ -271,98 +274,14 @@ class InternalDiseaseUI:
         for i in range(len(df)):
             self.tree.insert("", "end", values=(f"Satır {i + 1}",))
 
-    def analyze_values(self, row):
-        analysis = {}
-        score = 0
 
-        # --- Glikoz ---
-        glucose = row.get("glucose")
-        if glucose not in (None, "", "unknown"):
-            if glucose > 180:
-                analysis["glucose"] = "Hiperglisemi"
-                score += 15
-            elif glucose > 140:
-                analysis["glucose"] = "Yüksek glikoz"
-                score += 10
-            elif glucose < 70:
-                analysis["glucose"] = "Hipoglisemi"
-                score += 15
-            else:
-                analysis["glucose"] = "Normal"
-
-        # --- İnsülin ---
-        insulin = row.get("insulin")
-        if insulin not in (None, "", "unknown"):
-            if insulin > 200:
-                analysis["insulin"] = "İnsülin direnci olası"
-                score += 10
-            elif insulin < 20:
-                analysis["insulin"] = "Düşük insülin"
-                score += 5
-            else:
-                analysis["insulin"] = "Normal"
-
-        # --- BMI ---
-        bmi = row.get("bmi")
-        if bmi not in (None, "", "unknown"):
-            if bmi >= 30:
-                analysis["bmi"] = "Obezite"
-                score += 15
-            elif bmi >= 25:
-                analysis["bmi"] = "Fazla kilolu"
-                score += 10
-            elif bmi < 18.5:
-                analysis["bmi"] = "Zayıf"
-                score += 5
-            else:
-                analysis["bmi"] = "Normal"
-
-        # --- Yaş ---
-        age = row.get("age")
-        if age not in (None, "", "unknown"):
-            if age >= 65:
-                analysis["age"] = "İleri yaş"
-                score += 10
-            elif age >= 45:
-                analysis["age"] = "Orta yaş"
-                score += 5
-            else:
-                analysis["age"] = "Genç"
-
-        # --- Kan Basıncı (BP) ---
-        bp = row.get("bp")
-        if bp not in (None, "", "unknown"):
-            if bp >= 140:
-                analysis["bp"] = "Hipertansiyon"
-                score += 15
-            elif bp >= 130:
-                analysis["bp"] = "Yüksek tansiyon"
-                score += 10
-            else:
-                analysis["bp"] = "Normal"
-
-        # --- Hemoglobin ---
-        hgb = row.get("hemoglobin")
-        if hgb not in (None, "", "unknown"):
-            if hgb < 12:
-                analysis["hemoglobin"] = "Anemi olası"
-                score += 10
-            elif hgb > 17:
-                analysis["hemoglobin"] = "Yüksek hemoglobin"
-                score += 5
-            else:
-                analysis["hemoglobin"] = "Normal"
-
-        # --- Final skor ---
-        analysis["risk_score"] = score
-        return analysis
 
     def on_row_selected(self, event):
-        selection = self.tree.curselection()
-        if not selection:
+        selected = self.tree.selection()
+        if not selected:
             return
 
-        item = self.tree.item(selection[0])
+        item = self.tree.item(selected[0])
         satir_text = item["values"][0]
 
         index = int(satir_text.split()[1]) - 1
@@ -399,13 +318,16 @@ class InternalDiseaseUI:
         return "\n".join(lines)
 
     def run_analysis(self):
-        selected = self.list_rows.curselection()
+        selected = self.tree.selection()
         if not selected:
             self.ai_textbox.delete("1.0", "end")
             self.ai_textbox.insert("end", "Lütfen bir satır seçin.\n")
             return
 
-        idx = selected[0]
+        item = self.tree.item(selected[0])
+        satir_text = item["values"][0]
+
+        idx = int(satir_text.split()[1])-1
 
         # CSV satırını al ve nan değerleri temizle
         row = self.logic.df.iloc[idx].fillna("bilinmiyor")
@@ -415,10 +337,6 @@ class InternalDiseaseUI:
         self.labels[list(self.labels.keys())[0]].config(text="TEST")
 
         self.fill_labels_from_row(row)
-
-        # Python içi analiz
-        analysis = self.analyze_values(row)
-        score = analysis.get("aggressiveness_score", 0)
 
         # Prompt oluştur
         prompt = self.build_clinical_prompt(row)
@@ -431,7 +349,7 @@ class InternalDiseaseUI:
         self.ask_ai_async(prompt)
 
     def ai_analysis_button(self):
-        selection = self.list_rows.curselection()
+        selection = self.tree.selection()
         if not selection:
             print("Satır seçilmedi!")
             return
@@ -481,27 +399,41 @@ class InternalDiseaseUI:
         print("THREAD başlatıldı")
 
     def build_clinical_prompt(self, row):
+        text = (
+            "Aşağıdaki Internal Disease verilerini klinik olarak değerlendir.\n"
+            "Veri seti dinamik olduğu için kolonlara göre analiz yap.\n"
+            "Kısa, net ve profesyonel bir Türkçe klinik değerlendirme üret.\n"
+            "Nöroloji, Parkinson, boy, BMI gibi başka modüllere ait konulara değinme.\n"
+            "Sadece verilen kolonlara göre yorum yap.\n\n"
+        )
 
-        bulgu_text = "\n".join([f"{col} = {row[col]}" for col in row.index])
-        prompt = f"""
-           Aşağıdaki veriler bir hastanın Parkinson ses analizi bulgularıdır.
-            Bu bulgulara göre olası nörolojik tanıları üret.
-            Sadece tıbbi bilgi kullan.
-            Klinik Bulgular:
-        {bulgu_text}
-            """
-        return prompt
+        for col in row.index:
+            text += f"{col}: {row[col]}\n"
+
+        text += (
+                "\nLütfen şu başlıklar altında değerlendirme yap:\n"
+                "- Yaşam tarzı riskleri (sigara, alkol, aktivite)\n"
+                "- Beslenme(meyve, sebze)\n"
+        "- Kardiyovasküler risk (varsa ilgili kolonlar)\n"
+        "- Genel sağlık durumu (varsa ilgili kolonlar)\n"
+        "- Mental sağlık (varsa ilgili kolonlar)\n"
+        "- Sağlık hizmetine erişim (varsa ilgili kolonlar)\n"
+        "- Sosyoekonomik durum (varsa ilgili kolonlar)\n"
+        "- Sonuç ve öneriler\n"
+        )
+
+        return text
 
     def update_ai_output(self, row):
         bulgular = "\n".join([f"- {col}: {row[col]}" for col in row.index])
 
         text = []
-        text.append("🧠 Nörolojik Klinik Değerlendirme")
+        text.append(" Klinik Değerlendirme")
         text.append("")
-        text.append("📌 Hastaya ait nörolojik klinik bulgular:")
+        text.append("📌 Hastaya ait klinik bulgular:")
         text.append(bulgular)
         text.append("")
-        text.append("🔍 Bu bulgular AI tarafından analiz edilerek olası nörolojik tanılar üretilecektir.")
+        text.append("🔍 Bu bulgular AI tarafından analiz edilerek olası terapevtik tanılar üretilecektir.")
         text.append("")
 
         self.ai_textbox.delete("1.0", "end")
