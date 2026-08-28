@@ -1448,13 +1448,20 @@ class DataAnalyseGUI:
     def update_ai_text(self,ai_response):
         #GUİ güvenli yazma
         self.ai_text.delete("1.0", tk.END)
-        self.ai_text.insert(tk.END, ai_response)
+        #Gelen yaniti stringe cevirip guvenli yaziyoruz
+        text_to_display = str(ai_response) if ai_response is not None else ""
+        self.ai_text.insert(tk.END, text_to_display)
 
     def clear_filter_gui(self):
         print("Filtre kaldırıldı,veri yeniden yüklendi!")
-        self.logic.df = self.logic.df_original.copy()
+        if hasattr(self.logic,"df_original") and self.logic.df_original is not None:
+            self.logic.df = self.logic.df_original.copy()
 
-        self.ask_ai_async(self.generate_full_summary())
+            #Ekrandaki tabloyu da sifirlanmis ceriyle gunceller
+            if hasattr(self,"update_table"):
+                self.update_table(self.logic.df)
+
+            self.ask_ai_async(self.generate_full_summary())
 
     def on_branch_selected(self,event):
         print("Branş seçildi",self.branch_var.get())
@@ -1464,46 +1471,47 @@ class DataAnalyseGUI:
         #Modul cek
         self.current_module = None
 
-        # --- Yeni mimari: branş UI aç ---
-        if selected == "oncology":
-            from ui_oncology import OncologyUI
-            new_window = tk.Toplevel(self.root)
-            self.ui_oncology = OncologyUI(new_window, self.logic, None,self)
+        #---Brans Mapping(Branş adı,Modül adı,Sınıf adı)---
+        branch_map = {
+            "oncology": ("ui_oncology", "OncologyUI"),
+            "cardiology": ("ui_cardiology", "CardiologyUI"),
+            "neurology": ("ui_neurology", "NeurologyUI"),
+            "internal_disease": ("ui_internal_disease", "InternalDiseaseUI")
+        }
 
-            #CSV yüklenmişse satırları doldur
-            if hasattr(self.logic,"df") and self.logic.df is not None:
-                print("CSV zaten vardı -> update_rows çağrılıyor")
-                self.ui_oncology.update_rows(self.logic.df)
-        elif selected == "cardiology":
-            from ui_cardiology import CardiologyUI
-            new_window = tk.Toplevel(self.root)
-            self.ui_cardiology = CardiologyUI(new_window, self.logic, None,self)
+        if selected not in branch_map:
+            print("Bu branş için UI henüz oluşturulmadı")
+            return
 
-            if hasattr(self.logic,"df") and self.logic.df is not None:
-                print("CSV zaten vardı -> update_rows çağrılıyor")
-                self.ui_cardiology.update_rows(self.logic.df)
+        #--- Acik pencere kontrolu (Ayni pencere aciksa one getir)---
+        attr_name = f"ui_{selected}"
+        if hasattr(self,attr_name):
+            existing_ui = getattr(self,attr_name)
+            if existing_ui and hasattr(existing_ui, "root") and existing_ui.root.winfo_exists:
+                existing_ui.root.lift()
+                existing_ui.root.focus_force()
+                return
 
-        elif selected == "neurology":
-            from ui_neurology import NeurologyUI
-            new_window = tk.Toplevel(self.root)
-            self.ui_neurology =NeurologyUI(new_window, self.logic, self.current_module,self)
+        #---Dinamik yükleme ---
+        module_name,class_name = branch_map[selected]
 
-            if hasattr(self.logic,"df") and self.logic.df is not None:
-                print("CSV zaten vardı -> update_rows çağrılıyor")
-                self.ui_neurology.update_rows(self.logic.df)
+        #Modülü ihtiyaç anında dinamik çağırıyoruz
+        import importlib
+        module = importlib.import_module(module_name)
+        ui_class = getattr(module,class_name)
 
-        elif selected == "internal_disease":
-            from ui_internal_disease import InternalDiseaseUI
-            new_window = tk.Toplevel(self.root)
-            self.ui_internal_disease = InternalDiseaseUI(new_window, self.logic, self.current_module, self)
+        #Pencereyi ve UI sınıfnı tek noktadan olusturuyo
+        new_window = tk.Toplevel(self.root)
+        branch_ui_instance = ui_class(new_window,self.logic,self.current_module,self)
 
-            if hasattr(self.logic, "df") and self.logic.df is not None:
-                print("CSV zaten vardı -> update_rows çağrılıyor")
-                self.ui_internal_disease.update_rows(self.logic.df)
+        #Nesneyi dinamik olarak değişkene atadım
+        setattr(self,attr_name,branch_ui_instance)
 
+       #---Veri  yükleme----
+        if hasattr(self.logic,"df") and self.logic.df is not None:
+            print("CSV zaten vardı -> update_rows çağrılıyor")
+        branch_ui_instance.update_rows(self.logic.df)
 
-        else:
-            print("Bu branş için UI henüz oluşturulmadı.")
 
 
 

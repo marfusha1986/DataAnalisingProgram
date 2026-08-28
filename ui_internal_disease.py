@@ -61,10 +61,23 @@ class InternalDiseaseUI:
         self.scroll_frame.bind("<Configure>", _on_frame_configure)
 
         def _on_mousewheel(event):
-            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+            if event.delta:
+                canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+            else:
+                if event.num == 4:
+                    canvas.yview_scroll(-1,"units")
+                elif event.num == 5:
+                    canvas.yview_scroll(1,"units")
 
-        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        def _bind_mousewheel(e=None):
+            self.root.bind_all("<MouseWheel>", _on_mousewheel) #Windows/macOS
+            self.root.bind_all("<Button-4>",_on_mousewheel) #Linux Yukarı
+            self.root.bind_all("<Button-5>",_on_mousewheel) #Linux Aşağı
 
+        def _unbind_mousewheel(e=None):
+            self.root.unbind_all("<MouseWheel>")
+            self.root.unbind_all("<Button-4>")
+            self.root.unbind_all("<Button-5>")
 
         self.create_dynamic_fields()
 
@@ -137,12 +150,28 @@ class InternalDiseaseUI:
 
         self.next_row += 1
         # Hover efekti
-        self.ai_textbox.bind("<Enter>", lambda e: e.widget.config(bg="#f7fbff"))
-        self.ai_textbox.bind("<Leave>", lambda e: e.widget.config(bg="#ffffff"))
+        _bind_mousewheel()
+
+        self.ai_textbox.bind("<Enter>", lambda e: e.widget.config(bg="#2A2A2A"))
+        self.ai_textbox.bind("<Leave>", lambda e: e.widget.config(bg="#1E1E1E"))
+
+        self.ai_textbox.bind("<Enter>", lambda e: [_unbind_mousewheel(), e.widget.config(bg="#2A2A2A")])
+
+        # Fare ana scroll analına girdiğinde  tekerlek odağını Canvas'a bağla
+        self.scroll_frame.bind("<Enter>", _bind_mousewheel)
+
 
         self.ai_textbox.tag_config("title", font=("Segoe UI", 13, "bold"), foreground="#aa0000")
         self.ai_textbox.tag_config("section", font=("Segoe UI", 12, "bold"), foreground="#003366")
         self.ai_textbox.tag_config("text", font=("Segoe UI", 11), foreground="#333333")
+
+        def _on_textbox_scroll(event):
+            #Textbox kendi scrollunu yapıyor
+            return "break"
+
+        self.ai_textbox.bind("<MouseWheel>", _on_textbox_scroll)
+        self.ai_textbox.bind("<Button-4>", _on_textbox_scroll)
+        self.ai_textbox.bind("<Button-5>", _on_textbox_scroll)
 
         self.next_row += 1
         style = ttk.Style()
@@ -171,6 +200,19 @@ class InternalDiseaseUI:
 
         # --- ALT BOŞLUK ---
         tk.Frame(self.scroll_frame, height=50).grid(row=self.next_row, column=0)
+
+        self.root.protocol("WM_DELETE_WINDOW",self.on_close)
+
+    def on_close(self):
+        try:
+            self.root.unbind_all("<MouseWheel>")
+            self.root.unbind_all("<Button-4>")
+            self.root.unbind_all("<Button-5>")
+        except Exception:
+            pass
+        self.root.destroy()
+
+
 
 
     def build_row_list(self):
