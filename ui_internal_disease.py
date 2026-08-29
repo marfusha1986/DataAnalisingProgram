@@ -13,6 +13,7 @@ class InternalDiseaseUI:
         self.current_module = module
         self.entries = {}
         self.gui = gui
+        self.next_row = 0
 
         self.root.title("Internal_Disease Module")
         self.root.geometry("1100x800")
@@ -28,22 +29,27 @@ class InternalDiseaseUI:
         container.grid_rowconfigure(0, weight=1)
         container.grid_columnconfigure(0, weight=1)
 
-        canvas = tk.Canvas(container)
-        canvas.configure(height=1)
-        canvas.grid(row=0, column=0, sticky="nsew")
+        main_canvas = tk.Canvas(container)
+        main_canvas.configure(height=1)
+        main_canvas.grid(row=0, column=0, sticky="nsew")
 
-        canvas.grid_rowconfigure(0, weight=1)
-        canvas.grid_columnconfigure(0, weight=1)
+        main_canvas = tk.Canvas(container)
+        main_canvas.grid(row=0, column=0, sticky="nsew")
 
-        scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        main_canvas.bind("<Enter>", lambda e: (main_canvas.focus_set(),_bind_mousewheel()))
+
+
+        main_canvas.grid_rowconfigure(0, weight=1)
+        main_canvas.grid_columnconfigure(0, weight=1)
+
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=main_canvas.yview)
         scrollbar.grid(row=0, column=1, sticky="ns")
-        canvas.configure(yscrollcommand=scrollbar.set)
+        main_canvas.configure(yscrollcommand=scrollbar.set)
 
-        self.scroll_frame = tk.Frame(canvas)
-        window_id = canvas.create_window((0, 0), window=self.scroll_frame, anchor="nw")
+        self.scroll_frame = tk.Frame(main_canvas)
+        window_id = main_canvas.create_window((0, 0), window=self.scroll_frame, anchor="nw")
 
         self.root.configure(bg="#f2f2f2")
-        self.scroll_frame.configure(bg="#f2f2f2")
 
         title = tk.Label(
                 self.scroll_frame,
@@ -52,52 +58,52 @@ class InternalDiseaseUI:
                 fg="#aa0000",
                 bg="#f2f2f2"
         )
-        title.grid(row=0, column=0, columnspan=2, pady=10)
+        title.grid(row=self.next_row, column=0, columnspan=2, pady=10)
+        self.next_row +=1
 
         def _on_frame_configure(event):
-            canvas.configure(scrollregion=canvas.bbox("all"))
-            canvas.itemconfig(window_id, width=event.width)
+            main_canvas.configure(scrollregion=main_canvas.bbox("all"))
+            main_canvas.itemconfig(window_id, width=event.width)
 
         self.scroll_frame.bind("<Configure>", _on_frame_configure)
 
-        def _on_mousewheel(event):
-            if event.delta:
-                canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-            else:
-                if event.num == 4:
-                    canvas.yview_scroll(-1,"units")
-                elif event.num == 5:
-                    canvas.yview_scroll(1,"units")
-
-        def _bind_mousewheel(e=None):
-            self.root.bind_all("<MouseWheel>", _on_mousewheel) #Windows/macOS
-            self.root.bind_all("<Button-4>",_on_mousewheel) #Linux Yukarı
-            self.root.bind_all("<Button-5>",_on_mousewheel) #Linux Aşağı
-
-        def _unbind_mousewheel(e=None):
-            self.root.unbind_all("<MouseWheel>")
-            self.root.unbind_all("<Button-4>")
-            self.root.unbind_all("<Button-5>")
-
         self.create_dynamic_fields()
-
         self.build_row_list()
-
         self.update_rows(self.logic.df)
 
-        self.next_row += 1
+        self.next_row = self.scroll_frame.grid_size()[1]
 
         # --- AI ÇIKTI ALANI ---
         ai_label = tk.Label(
-                self.scroll_frame,
-                text="AI Analysis Output",
-                font=("Segoe UI", 14, "bold"),
-                fg="#aa0000",
-                bg="#f2f2f2"
+            self.scroll_frame,
+            text="AI Analysis Output",
+            font=("Segoe UI", 14, "bold"),
+            fg="#aa0000",
+            bg="#f2f2f2"
         )
         ai_label.grid(row=self.next_row, column=0, columnspan=2, pady=(20, 5), sticky="w")
 
         self.next_row += 1
+
+        def _on_mousewheel(event):
+            if event.num == 4:
+                main_canvas.yview_scroll(-1, "units")
+            elif event.num == 5:
+                main_canvas.yview_scroll(1, "units")
+            else:
+                main_canvas.yview_scroll(int(-1*(event.delta / 120)), "units")
+
+        def _bind_mousewheel(e=None):
+            main_canvas.bind_all("<MouseWheel>", _on_mousewheel) #Windows/macOS
+            main_canvas.bind_all("<Button-4>",_on_mousewheel) #Linux Yukarı
+            main_canvas.bind_all("<Button-5>",_on_mousewheel) #Linux Aşağı
+
+        def _unbind_mousewheel(e=None):
+            main_canvas.unbind_all("<MouseWheel>")
+            main_canvas.unbind_all("<Button-4>")
+            main_canvas.unbind_all("<Button-5>")
+
+        _bind_mousewheel()
 
         # --- STYLE (CSS benzeri) ---
         style = ttk.Style()
@@ -122,69 +128,63 @@ class InternalDiseaseUI:
                 height=15,
                 width=60,
                 bg="#1E1E1E",  # koyu arka plan
-                fg="#FF5555",  # açık yazı
+                fg="#FFFFFF",  # açık yazı
                 insertbackground="#FFFFFF",  # imleç rengi
                 relief="flat",
                 padx=10,
                 pady=10
         )
         self.ai_textbox.grid(row=self.next_row, column=0, sticky="nsew")
-        self.ai_textbox.tag_config("error", foreground="#FF4444")
-        self.ai_textbox.tag_config("normal", foreground="#000000")
 
         # Scrollbar
         scroll = ttk.Scrollbar(
-                self.scroll_frame,
-                orient="vertical",
-                command=self.ai_textbox.yview,
-                style="Vertical.TScrollbar"
+            self.scroll_frame,
+            orient="vertical",
+            command=self.ai_textbox.yview,
+            style="Vertical.TScrollbar"
         )
         scroll.grid(row=self.next_row, column=1, sticky="ns")
-
         # Textbox scroll bağlantısı
         self.ai_textbox.configure(yscrollcommand=scroll.set)
+        self.scroll_frame.rowconfigure(0, weight=1)
 
-        # Grid genişleme
-        self.scroll_frame.rowconfigure(self.next_row, weight=1)
-        self.scroll_frame.columnconfigure(0, weight=1)
-
-        self.next_row += 1
-        # Hover efekti
-        _bind_mousewheel()
-
-        self.ai_textbox.bind("<Enter>", lambda e: e.widget.config(bg="#2A2A2A"))
-        self.ai_textbox.bind("<Leave>", lambda e: e.widget.config(bg="#1E1E1E"))
-
-        self.ai_textbox.bind("<Enter>", lambda e: [_unbind_mousewheel(), e.widget.config(bg="#2A2A2A")])
-
-        # Fare ana scroll analına girdiğinde  tekerlek odağını Canvas'a bağla
-        self.scroll_frame.bind("<Enter>", _bind_mousewheel)
-
-
-        self.ai_textbox.tag_config("title", font=("Segoe UI", 13, "bold"), foreground="#aa0000")
-        self.ai_textbox.tag_config("section", font=("Segoe UI", 12, "bold"), foreground="#003366")
-        self.ai_textbox.tag_config("text", font=("Segoe UI", 11), foreground="#333333")
+        self.ai_textbox.tag_config("error", foreground="#FF4444")
+        self.ai_textbox.tag_config("normal", foreground="#E0E0E0")
+        self.ai_textbox.tag_config("title", font=("Segoe UI", 13, "bold"), foreground="#FF6666")
+        self.ai_textbox.tag_config("section", font=("Segoe UI", 12, "bold"), foreground="#66B2FF")
+        self.ai_textbox.tag_config("text", font=("Segoe UI", 11), foreground="#DDDDDD")
 
         def _on_textbox_scroll(event):
-            #Textbox kendi scrollunu yapıyor
+            if event.delta:
+                self.ai_textbox.yview_scroll(int(-1 * (event.delta / 120)), "units")
+            else:
+                if event.num == 4:
+                    self.ai_textbox.yview_scroll(-1, "units")
+                elif event.num == 5:
+                    self.ai_textbox.yview_scroll(1, "units")
             return "break"
 
         self.ai_textbox.bind("<MouseWheel>", _on_textbox_scroll)
         self.ai_textbox.bind("<Button-4>", _on_textbox_scroll)
         self.ai_textbox.bind("<Button-5>", _on_textbox_scroll)
 
-        self.next_row += 1
-        style = ttk.Style()
-        style.theme_use("clam")
+        self.ai_textbox.bind("<Enter>", lambda e:(_unbind_mousewheel(), e.widget.config(bg="#2A2A2A")))
+        self.ai_textbox.bind("<Leave>", lambda e:(_bind_mousewheel(), e.widget.config(bg="#1E1E1E")))
 
-        style.configure("TButton",
+        self.scroll_frame.bind("<MouseWheel>", lambda e: "break")
+        self.scroll_frame.bind("<Button-4>", lambda e: "break")
+        self.scroll_frame.bind("<Button-5>", lambda e: "break")
+
+        self.next_row += 1
+
+        style.configure("AI.TButton",
                             font=("Segoe UI", 11, "bold"),
                             padding=6,
                             background="#0055aa",
                             foreground="white",
                             borderwidth=0)
 
-        style.map("TButton",
+        style.map("AI.TButton",
                       background=[("active", "#0077cc")])
 
         # AI analiz butonu
@@ -199,7 +199,7 @@ class InternalDiseaseUI:
         self.next_row += 1
 
         # --- ALT BOŞLUK ---
-        tk.Frame(self.scroll_frame, height=50).grid(row=self.next_row, column=0)
+        tk.Frame(self.scroll_frame, height=50,bg="#f2f2f2").grid(row=self.next_row, column=0)
 
         self.root.protocol("WM_DELETE_WINDOW",self.on_close)
 
