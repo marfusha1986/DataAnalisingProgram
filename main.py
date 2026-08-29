@@ -592,11 +592,11 @@ class DataAnalyseLogic:
     # Çeviri
     def ask_ai_translate(self, text):
         print("LOGIC.ASK_AI_TRANSLATE çağrıldı")
-        backedn = self.get_ai_backend()
+        backend = self.get_ai_backend()
 
         try:
             #---Windows + OLLAMA---
-            if backedn["type"] == "ollama":
+            if backend["type"] == "ollama":
                 result = subprocess.run(
                     ["ollama", "run", "llama3.1:8b"],
                     input=text,
