@@ -1,0 +1,14 @@
+# PyCharm ve IDE ayarları
+.idea/
+.vscode/
+
+# Python derleme ve önbellek dosyaları
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Veri ve sanal çevre klasörleri (varsa)
+venv/
+env/
+*.log
