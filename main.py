@@ -11,6 +11,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 import requests
 import subprocess
+import platform
 import sys
 import threading
 import re
@@ -516,28 +517,74 @@ class DataAnalyseLogic:
 
     # Klinik analiz
 
+    def get_ai_backend(self):
+        system = platform.system()
+
+        if system == "Windows":
+            return {
+                "type": "Ollama",
+                "endpoint":"httpm://localhost:11434",
+                "model":"llama3.1:8b"
+            }
+        elif system =="Linux":
+            return {
+                "type":"lmstudio",
+                "endpoint":"http://localhost:1234/v1/chat/completions",
+                "model":"Meta-Llama-8-8B-Instruct-GGUF"
+            }
+        return None
+
     def ask_ai(self, prompt):
         print("LOGIC.ASK_AI çağrıldı")
+        backend = self.get_ai_backend()
         try:
             print("PROMPT:", repr(prompt))
+            #------------------------------------
+            #WINDOWS -> OLLAMA (SUBPROCES)
+            #----------------------------------------
+            if backend["type"] == "ollama":
+                result = subprocess.run(
+                    ["ollama", "run", "llama3.1:8b"],
+                    input=prompt,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    timeout=240,
+                    text=True,# stdout'u str olarak alır
+                    encoding="utf-8"
+                    )
 
-            result = subprocess.run(
-                ["ollama", "run", "llama3.1:8b"],
-                input=prompt,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                timeout=240,
-                text=True,# stdout'u str olarak alır
-                encoding="utf-8"
+                raw = result.stdout
+                print("RAW AI:", repr(raw))
+
+                clean = self.clean_ansi(raw)
+                print("CLEAN AI:", repr(clean))
+
+                return clean.strip()
+            #-----------------------------------
+            #LINUX -> STUDIO (HTTP API)
+            #-----------------------------
+
+            elif backend["type"] == "lmstudio":
+                resp = requests.post(
+                    backend["endpoint"],
+                    json={
+                        "model": backend["model"],
+                        "messages":[{"role":"user","content":prompt}]
+                    },
+                    timeout=240
                 )
 
-            raw = result.stdout
-            print("RAW AI:", repr(raw))
+                data = resp.json()
+                raw = data["choices"][0]["messages"]["content"]
+                print("RAW AI",repr(raw))
 
-            clean = self.clean_ansi(raw)
-            print("CLEAN AI:", repr(clean))
+                clean = self.clean_ansi(raw)
+                print("CLEAN AI:",repr(clean))
 
-            return clean.strip()
+                return clean.strip()
+
+            else:
+                return "AI backend bulunamadı"
 
         except Exception as e:
             return f"AI hatası: {e}"
@@ -545,24 +592,49 @@ class DataAnalyseLogic:
     # Çeviri
     def ask_ai_translate(self, text):
         print("LOGIC.ASK_AI_TRANSLATE çağrıldı")
+        backedn = self.get_ai_backend()
+
         try:
-            result = subprocess.run(
-                ["ollama", "run", "llama3.1:8b"],
-                input=text,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                timeout=120,
-                text=True,
-                encoding="utf-8"
+            #---Windows + OLLAMA---
+            if backedn["type"] == "ollama":
+                result = subprocess.run(
+                    ["ollama", "run", "llama3.1:8b"],
+                    input=text,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    timeout=120,
+                    text=True,
+                    encoding="utf-8"
+                    )
+
+                raw = result.stdout
+                print("RAW TR:", repr(raw))
+
+                clean = self.clean_ansi(raw)
+                print("CLEAN TR:", repr(clean))
+
+                return clean.strip()
+            elif backend["type"] == "lmstudio":
+                resp = requests.post(
+                    backend["endpoint"],
+                    json={
+                        "model": backend["model"],
+                        "messages": [{"role": "user", "content": text}]
+                    },
+                    timeout=120
                 )
 
-            raw = result.stdout
-            print("RAW TR:", repr(raw))
+                data = resp.json()
+                raw = data["choices"][0]["message"]["content"]
+                print("RAW TR:", repr(raw))
 
-            clean = self.clean_ansi(raw)
-            print("CLEAN TR:", repr(clean))
+                clean = self.clean_ansi(raw)
+                print("CLEAN TR:", repr(clean))
 
-            return clean.strip()
+                return clean.strip()
+
+            else:
+                return "AI backend bulunamadı."
 
         except Exception as e:
             return f"AI TRANSLATE hatası: {e}"

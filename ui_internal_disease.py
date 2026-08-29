@@ -164,6 +164,8 @@ class InternalDiseaseUI:
                     self.ai_textbox.yview_scroll(1, "units")
             return "break"
 
+
+
         self.ai_textbox.bind("<MouseWheel>", _on_textbox_scroll)
         self.ai_textbox.bind("<Button-4>", _on_textbox_scroll)
         self.ai_textbox.bind("<Button-5>", _on_textbox_scroll)
@@ -174,6 +176,8 @@ class InternalDiseaseUI:
         self.scroll_frame.bind("<MouseWheel>", lambda e: "break")
         self.scroll_frame.bind("<Button-4>", lambda e: "break")
         self.scroll_frame.bind("<Button-5>", lambda e: "break")
+
+        self.scroll_frame.bind("<Leave>", lambda e: _bind_mousewheel())
 
         self.next_row += 1
 
