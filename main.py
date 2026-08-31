@@ -53,7 +53,7 @@ class DataAnalyseLogic:
         print("Ollama PATH: ",shutil.which("ollama"))
 
     def load_data(self, file_path):
-        # Try several encodings to avoid UnicodeDecodeError for files saved with different encodings
+
         encodings = ['utf-8', 'latin1', 'cp1254', 'iso-8859-1']
         df = None
         for enc in encodings:
@@ -67,7 +67,7 @@ class DataAnalyseLogic:
                 print(f"read_csv encoding {enc} failed: {e}")
 
         if df is None:
-            # Last-resort: replace invalid chars
+
             try:
                 df = pd.read_csv(file_path, encoding='utf-8', errors='replace')
                 print("read_csv succeeded with encoding utf-8 and errors='replace'")
@@ -544,6 +544,7 @@ class DataAnalyseLogic:
 
         if system == "Windows":
             return {
+
                 "type": "ollama",
                 "endpoint":"http://localhost:11434",
                 "model":"llama3.1:8b"
