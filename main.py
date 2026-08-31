@@ -544,8 +544,8 @@ class DataAnalyseLogic:
 
         if system == "Windows":
             return {
-                "type": "Ollama",
-                "endpoint":"httpm://localhost:11434",
+                "type": "ollama",
+                "endpoint":"http://localhost:11434",
                 "model":"llama3.1:8b"
             }
         elif system =="Linux":
