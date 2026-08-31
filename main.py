@@ -544,8 +544,8 @@ class DataAnalyseLogic:
 
         if system == "Windows":
             return {
-                "type": "Ollama",
-                "endpoint":"httpm://localhost:11434",
+                "type": "ollama",
+                "endpoint":"http://localhost:11434",
                 "model":"llama3.1:8b"
             }
         elif system =="Linux":
@@ -561,32 +561,32 @@ class DataAnalyseLogic:
         backend = self.get_ai_backend()
         try:
             print("PROMPT:", repr(prompt))
-            #------------------------------------
-            #WINDOWS -> OLLAMA (SUBPROCES)
-            #----------------------------------------
-            if backend["type"] == "ollama":
+            if not backend:
+                return "AI backend bulunamadı. get_ai_backend() returned None."
+            btype = str(backend.get("type", "")).lower()
+
+            # Windows / Ollama via subprocess
+            if btype == "ollama":
                 result = subprocess.run(
-                    ["ollama", "run", "llama3.1:8b"],
+                    ["ollama", "run", backend.get("model", "llama3.1:8b")],
                     input=prompt,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     timeout=320,
-                    text=True,# stdout'u str olarak alır
+                    text=True,
                     encoding="utf-8"
-                    )
+                )
 
-                raw = result.stdout
+                raw = result.stdout or result.stderr
                 print("RAW AI:", repr(raw))
 
                 clean = self.clean_ansi(raw)
                 print("CLEAN AI:", repr(clean))
 
                 return clean.strip()
-            #-----------------------------------
-            #LINUX -> STUDIO (HTTP API)
-            #-----------------------------
 
-            elif backend["type"] == "lmstudio":
+            # Linux / LM Studio via HTTP API
+            elif btype == "lmstudio":
 
                 payload = {
                     "model": backend["model"],
@@ -604,7 +604,6 @@ class DataAnalyseLogic:
                     timeout=600
                 )
 
-
                 try:
                     resp.raise_for_status()
                 except Exception as e:
@@ -621,7 +620,6 @@ class DataAnalyseLogic:
 
                 raw = None
 
-
                 if raw is None:
                     raw = data.get("text") or data.get("content")
                 elif isinstance(data, list) and data:
@@ -636,8 +634,10 @@ class DataAnalyseLogic:
                 clean = self.clean_ansi(raw)
                 print("CLEAN AI:", repr(clean))
 
+                return clean.strip()
+
             else:
-                return "AI backend bulunamadı"
+                return f"AI backend bulunamadı (type={backend.get('type')!r})"
 
         except requests.exceptions.Timeout:
             return "AI hatası: LM Studio yanıt vermedi. LM Studio sunucusunun açık olduğundan ve modelin yüklü olduğundan emin olun."
@@ -652,10 +652,13 @@ class DataAnalyseLogic:
         backend = self.get_ai_backend()
 
         try:
+            if not backend:
+                return "AI backend bulunamadı. get_ai_backend() returned None."
+            btype = str(backend.get("type", "")).lower()
             #---Windows + OLLAMA---
-            if backend["type"] == "ollama":
+            if btype == "ollama":
                 result = subprocess.run(
-                    ["ollama", "run", "llama3.1:8b"],
+                    ["ollama", "run", backend.get("model", "llama3.1:8b")],
                     input=text,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
@@ -664,14 +667,14 @@ class DataAnalyseLogic:
                     encoding="utf-8"
                     )
 
-                raw = result.stdout
+                raw = result.stdout or result.stderr
                 print("RAW TR:", repr(raw))
 
                 clean = self.clean_ansi(raw)
                 print("CLEAN TR:", repr(clean))
 
                 return clean.strip()
-            elif backend["type"] == "lmstudio":
+            elif btype == "lmstudio":
                 resp = requests.post(
                     backend["endpoint"],
                     json={
@@ -691,7 +694,7 @@ class DataAnalyseLogic:
                 return clean.strip()
 
             else:
-                return "AI backend bulunamadı."
+                return f"AI backend bulunamadı. (type={backend.get('type')!r})"
 
         except Exception as e:
             return f"AI TRANSLATE hatası: {e}"
