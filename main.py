@@ -53,7 +53,29 @@ class DataAnalyseLogic:
         print("Ollama PATH: ",shutil.which("ollama"))
 
     def load_data(self, file_path):
-        self.df = pd.read_csv(file_path)
+        # Try several encodings to avoid UnicodeDecodeError for files saved with different encodings
+        encodings = ['utf-8', 'latin1', 'cp1254', 'iso-8859-1']
+        df = None
+        for enc in encodings:
+            try:
+                df = pd.read_csv(file_path, encoding=enc)
+                print(f"read_csv succeeded with encoding: {enc}")
+                break
+            except UnicodeDecodeError:
+                print(f"read_csv encoding {enc} failed (UnicodeDecodeError)")
+            except Exception as e:
+                print(f"read_csv encoding {enc} failed: {e}")
+
+        if df is None:
+            # Last-resort: replace invalid chars
+            try:
+                df = pd.read_csv(file_path, encoding='utf-8', errors='replace')
+                print("read_csv succeeded with encoding utf-8 and errors='replace'")
+            except Exception as e:
+                print("read_csv final attempt failed:", e)
+                raise
+
+        self.df = df
 
         # Unnamed kolonları temizle
         self.df = self.df.loc[:, ~self.df.columns.str.contains('^Unnamed')]
@@ -548,7 +570,7 @@ class DataAnalyseLogic:
                     input=prompt,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    timeout=240,
+                    timeout=320,
                     text=True,# stdout'u str olarak alır
                     encoding="utf-8"
                     )
@@ -565,23 +587,54 @@ class DataAnalyseLogic:
             #-----------------------------
 
             elif backend["type"] == "lmstudio":
+
+                payload = {
+                    "model": backend["model"],
+                    "messages": [
+                        {"role": "system", "content": "You are a clinical assistant. Reply with a short, professional Turkish clinical evaluation using only the provided columns. Do NOT wrap the response in JSON, dictionaries, or code blocks — return plain text only."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.0,
+                    "max_tokens": 800
+                }
+
                 resp = requests.post(
                     backend["endpoint"],
-                    json={
-                        "model": backend["model"],
-                        "messages":[{"role":"user","content":prompt}]
-                    },
+                    json=payload,
                     timeout=240
                 )
 
-                data = resp.json()
-                raw = data["choices"][0]["messages"]["content"]
-                print("RAW AI",repr(raw))
 
+                try:
+                    resp.raise_for_status()
+                except Exception as e:
+                    print("LMStudio HTTP error:", e, "status:", getattr(resp, 'status_code', None), "text:", getattr(resp, 'text', None))
+                    raise
+
+                try:
+                    data = resp.json()
+                except Exception as e:
+                    print("LMStudio JSON decode error:", e, "text:", getattr(resp, 'text', None))
+                    raise
+
+                print("LMStudio response keys:", list(data.keys()) if isinstance(data, dict) else type(data))
+
+                raw = None
+
+
+                if raw is None:
+                    raw = data.get("text") or data.get("content")
+                elif isinstance(data, list) and data:
+                    first = data[0]
+                    if isinstance(first, dict):
+                        raw = first.get("content") or first.get("text")
+
+                if not raw:
+                    raise ValueError(f"Beklenmeyen yanıt yapısı: {data!r}")
+
+                print("RAW AI", repr(raw))
                 clean = self.clean_ansi(raw)
-                print("CLEAN AI:",repr(clean))
-
-                return clean.strip()
+                print("CLEAN AI:", repr(clean))
 
             else:
                 return "AI backend bulunamadı"

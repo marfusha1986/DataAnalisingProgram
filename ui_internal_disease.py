@@ -421,11 +421,36 @@ class InternalDiseaseUI:
     def on_ai_result(self, ai_output):
         self.ai_textbox.delete("1.0", "end")
 
-        if not ai_output or "AI hatası" in ai_output or ai_output.strip() == "":
-            self.ai_textbox.insert("end", "AI cevap vermedi", "error")
-            return
-        else:
-            self.ai_textbox.insert("end", ai_output, "normal")
+        import json
+
+        # 1) Eğer string "AI hatası: Beklenmeyen yanıt yapısı:" ile başlıyorsa, JSON kısmını ayıkla
+        if isinstance(ai_output, str) and "Beklenmeyen yanıt yapısı:" in ai_output:
+            # İlk '{' karakterinden sonrasını al
+            start = ai_output.find("{")
+            if start != -1:
+                ai_output = ai_output[start:]
+
+        try:
+            # 2) LM Studio chat.completion JSON'unu parse et
+            data = json.loads(ai_output)
+
+            # 3) Asıl içerik: message.content
+            content = data["choices"][0]["message"]["content"]
+
+            # 4) İçerik JSON string → tekrar parse et
+            inner = json.loads(content)
+
+            # 5) Sadece klinik_degerlendirme metnini al
+            klinik = inner.get("klinik_degerlendirme")
+
+            if klinik:
+                self.ai_textbox.insert("end", klinik)
+            else:
+                self.ai_textbox.insert("end", content)
+
+        except Exception:
+            # Fallback: ham metni yaz
+            self.ai_textbox.insert("end", str(ai_output))
 
     def ask_ai_async(self, prompt):
         print("ASK_AI_ASYNC çağrıldı")
@@ -449,27 +474,30 @@ class InternalDiseaseUI:
             "Aşağıdaki Internal Disease verilerini klinik olarak değerlendir.\n"
             "Veri seti dinamik olduğu için kolonlara göre analiz yap.\n"
             "Kısa, net ve profesyonel bir Türkçe klinik değerlendirme üret.\n"
-            "Nöroloji, Parkinson, boy, BMI gibi başka modüllere ait konulara değinme.\n"
-            "Sadece verilen kolonlara göre yorum yap.\n\n"
+            "Sadece verilen kolonlara göre yorum yap.\n"
+            "Cevabı JSON, tool-call veya function-call formatında verme.\n"
+            "Sadece düz Türkçe klinik metin üret.\n\n"
         )
 
         for col in row.index:
             text += f"{col}: {row[col]}\n"
 
         text += (
-                "\nLütfen şu başlıklar altında değerlendirme yap:\n"
-                "- Yaşam tarzı riskleri (sigara, alkol, aktivite)\n"
-                "- Beslenme(meyve, sebze)\n"
-        "- Kardiyovasküler risk (varsa ilgili kolonlar)\n"
-        "- Genel sağlık durumu (varsa ilgili kolonlar)\n"
-        "- Mental sağlık (varsa ilgili kolonlar)\n"
-        "- Sağlık hizmetine erişim (varsa ilgili kolonlar)\n"
-        "- Sosyoekonomik durum (varsa ilgili kolonlar)\n"
-        "- Sonuç ve öneriler\n"
+            "\nLütfen şu başlıklar altında değerlendirme yap:\n"
+            "\nCevabı JSON, tool-call veya function-call formatında verme.\n"
+            "\nSadece düz Türkçe klinik metin üret.\n"
+            "\nHiçbir şekilde 'parameters', 'name', 'role', 'object' gibi alanlar döndürme\n"
+            "- Yaşam tarzı riskleri (sigara, alkol, aktivite)\n"
+            "- Beslenme (meyve, sebze)\n"
+            "- Kardiyovasküler risk (varsa ilgili kolonlar)\n"
+            "- Genel sağlık durumu (varsa ilgili kolonlar)\n"
+            "- Mental sağlık (varsa ilgili kolonlar)\n"
+            "- Sağlık hizmetine erişim (varsa ilgili kolonlar)\n"
+            "- Sosyoekonomik durum (varsa ilgili kolonlar)\n"
+            "- Sonuç ve öneriler\n"
         )
 
         return text
-
     def update_ai_output(self, row):
         bulgular = "\n".join([f"- {col}: {row[col]}" for col in row.index])
 
