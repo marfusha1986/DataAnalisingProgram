@@ -544,8 +544,8 @@ class DataAnalyseLogic:
 
         if system == "Windows":
             return {
-                "type": "ollama",
-                "endpoint":"http://localhost:11434",
+                "type": "Ollama",
+                "endpoint":"httpm://localhost:11434",
                 "model":"llama3.1:8b"
             }
         elif system =="Linux":
@@ -601,7 +601,7 @@ class DataAnalyseLogic:
                 resp = requests.post(
                     backend["endpoint"],
                     json=payload,
-                    timeout=240
+                    timeout=600
                 )
 
 
@@ -639,6 +639,10 @@ class DataAnalyseLogic:
             else:
                 return "AI backend bulunamadı"
 
+        except requests.exceptions.Timeout:
+            return "AI hatası: LM Studio yanıt vermedi. LM Studio sunucusunun açık olduğundan ve modelin yüklü olduğundan emin olun."
+        except requests.exceptions.ConnectionError:
+            return "AI hatası: LM Studio'a bağlanılamadı. Lütfen LM Studio servisinin çalıştığını kontrol edin."
         except Exception as e:
             return f"AI hatası: {e}"
 
@@ -674,7 +678,7 @@ class DataAnalyseLogic:
                         "model": backend["model"],
                         "messages": [{"role": "user", "content": text}]
                     },
-                    timeout=120
+                    timeout=600
                 )
 
                 data = resp.json()
