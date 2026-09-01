@@ -20,6 +20,7 @@ from ui_oncology import OncologyUI
 from ui_cardiology import CardiologyUI
 from ui_neurology import NeurologyUI
 from ui_internal_disease import InternalDiseaseUI
+from ui_anesthesia_icu import AnesthesiaICUUI
 
 
 #---16 Branslık tam liste---
@@ -515,12 +516,36 @@ class DataAnalyseLogic:
             print("Filtreleme hatası: ",e)
 
 
-
     def generate_ai_report(self,col,value):
-        # Değeri sınıflandır
-        classification = self.classify_value(col,value)
+        if value is None or (isinstance(value, str) and value.strip() == ""):
+            classification = "Bilinmeyen değer"
+        else:
+            try:
+                numeric_value = float(value)
+            except (TypeError, ValueError):
+                classification = "Metinsel değer / yorumlanmadı"
+            else:
+                # Dinamik sınıflandırma: kolonun mevcut verisine göre yüzde dilimleri kullanılır.
+                # Bu yöntem, kolonlar sürekli değiştiği için sabit metin eşiklerine bağımlı değildir.
+                if self.df is not None and col in self.df.columns:
+                    series = pd.to_numeric(self.df[col], errors="coerce").dropna()
+                    if not series.empty and series.nunique() > 1:
+                        q1, q3 = series.quantile([0.25, 0.75])
+                        if pd.notna(q1) and pd.notna(q3) and q1 != q3:
+                            if numeric_value < q1:
+                                classification = "Düşük"
+                            elif numeric_value > q3:
+                                classification = "Yüksek"
+                            else:
+                                classification = "Normal"
+                            
+                        else:
+                            classification = "Normal"
+                    else:
+                        classification = "Normal"
+                else:
+                    classification = "Normal"
 
-        # Metni oluştur
         report=(
             f"{col} değeri: {value}\n"
             f"Sınıflandırma :{classification}\n"
@@ -1540,7 +1565,7 @@ class DataAnalyseGUI:
             "Bu veri setine,filtreye,modele,istatistiklere ve grafik seçimlerine dayanarak"
             "detaylı bir klinik analiz yap.Bulguları tek tek değerlendir.\n"
             "Ardından EN SONUNDA şu soruya tek cümleyle,NET ve DOĞRUDAN cevap ver:\n"
-            "\"Bu hastada en olası klinik tabı nedir?\"\n"
+            "\"Bu hastada en olası klinik tablo nedir?\"\n"
             "Yuvarlak ifadeler kullanma.Kesin bir tanı cümlesi kur.\n"
             "Örnek:'Bu bulgular koroner arter hastalığı ile uyumludur'\n"
         )
@@ -1609,7 +1634,8 @@ class DataAnalyseGUI:
             "oncology": ("ui_oncology", "OncologyUI"),
             "cardiology": ("ui_cardiology", "CardiologyUI"),
             "neurology": ("ui_neurology", "NeurologyUI"),
-            "internal_disease": ("ui_internal_disease", "InternalDiseaseUI")
+            "internal_disease": ("ui_internal_disease", "InternalDiseaseUI"),
+            "anesthesia_icu": ("ui_anesthesia_icu", "AnesthesiaICUUI")
         }
 
         if selected not in branch_map:
