@@ -21,7 +21,7 @@ from ui_cardiology import CardiologyUI
 from ui_neurology import NeurologyUI
 from ui_internal_disease import InternalDiseaseUI
 from ui_anesthesia_icu import AnesthesiaICUUI
-
+from ui_dermatology import DermatologyUI
 
 #---16 Branslık tam liste---
 
@@ -1009,48 +1009,91 @@ class DataAnalyseGUI:
         self.ai_text.config(yscrollcommand=scroll.set)
         tk.Frame(self.filter_frame, height=70).grid(row=8, column=0)
 
-
     def file_upload(self):
-        file_path = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
-        if not file_path:
+        # Kullanıcıya tek tek dosya seçtirmek yerine klasör seçtiriyoruz
+        folder_path = filedialog.askdirectory(title="Veri Seti ve Görsellerin Bulunduğu Klasörü Seçin")
+        if not folder_path:
             return
 
-        columns = self.logic.load_data(file_path)
-        if self.ui_oncology is not None:
-            print("OncologyUI bulundu -> update_rows çağrılıyor")
-            self.ui_oncology.update_rows(self.logic.df)
+        import os
+        import pandas as pd
+
+        # Klasör içindeki tüm dosyaları tara
+        all_files = os.listdir(folder_path)
+
+        # CSV ve Resim dosyalarını ayırt et
+        csv_files = [f for f in all_files if f.lower().endswith('.csv')]
+        image_exts = ('.png', '.jpg', '.jpeg', '.bmp', '.webp', '.gif')
+        image_files = [f for f in all_files if f.lower().endswith(image_exts)]
+
+        # --- SENARYO 1: Klasörde Hem CSV Hem Resimler (veya Sadece CSV) Var ---
+        if csv_files:
+            # Klasördeki ilk CSV dosyasını ana veri olarak yükle
+            full_csv_path = os.path.join(folder_path, csv_files[0])
+            columns = self.logic.load_data(full_csv_path)
+
+            # Eğer CSV içinde önceden tanımlı 'Görsel_Yolu' kolonu YOKSA,
+            # klasördeki resimlerin tam yollarını otomatik olarak CSV satırlarına eşleştir
+            if "Görsel_Yolu" not in self.logic.df.columns and image_files:
+                img_paths = [os.path.join(folder_path, img) for img in image_files]
+
+                # Resim sayısı ile CSV satır sayısını eşleştir (eksik kalırsa None basar)
+                self.logic.df["Görsel_Yolu"] = pd.Series(img_paths)
+
+        # --- SENARYO 2: Klasörde Hiç CSV Yok, Sadece Resimler Var ---
+        elif image_files:
+            img_paths = [os.path.join(folder_path, img) for img in image_files]
+            self.logic.df = pd.DataFrame([{"Görsel_Yolu": p} for p in img_paths])
+            columns = list(self.logic.df.columns)
+
         else:
-            print("OncologyUI yok -> update_rows cağırılmadı")
+            print("Seçilen klasörde ne CSV ne de resim dosyası bulunamadı!")
+            return
 
-        print("file upload içindeki self:",self)
-        print("ui_oncology var mı",hasattr(self,"ui_oncology"))
+        self.logic.csv_folder = folder_path
 
-        # ---Target sadece kategorik kolonlar---
-        categorical_cols = self.logic.df.select_dtypes(include=['object','string',"category","int64","float64"]).columns
+        # --- SENİN BAZ ALDIĞIN DİNAMİK DICTIONARY YAPISI ---
+        modules_ui = {
+            "oncology": getattr(self, "ui_oncology", None),
+            "dermatology": getattr(self, "ui_dermatology", None),
+            "cardiology": getattr(self, "ui_cardiology", None),
+            "neurology": getattr(self, "ui_neurology", None),
+            "internal_disease": getattr(self, "ui_internal_disease", None),
+            "anesthesia_icu": getattr(self, "ui_anesthesia_icu", None),
+            # "rheumatology": getattr(self, "ui_rheumatology", None) # İleride eklenecek
+        }
+
+        for mod_name, ui_instance in modules_ui.items():
+            if ui_instance is not None:
+                print(f"{mod_name.capitalize()} modülü yüklendi, update_rows çağrılıyor...")
+                ui_instance.update_rows(self.logic.df)
+            else:
+                print(f"{mod_name.capitalize()} modülü yüklenmedi veya self içinde bulunamadı.")
+
+        # --- GUI BİLEŞENLERİNİ DOLDURMA ---
+        columns = list(self.logic.df.columns)
+        categorical_cols = self.logic.df.select_dtypes(
+            include=['object', 'string', 'category', 'int64', 'float64']).columns
         self.combo_target['values'] = list(categorical_cols)
 
-        # ---Feature listesine sadece sayısal kolonlar---
         numeric_cols = self.logic.df.select_dtypes(include=['float64', 'int64']).columns
         self.list_features.delete(0, tk.END)
         for col in numeric_cols:
             self.list_features.insert(tk.END, col)
 
-        # ---Eksik değer doldurma kolonları----
         self.combo_fill_col['values'] = columns
 
-        # ---Sütun tipleri---
         self.list_types.delete(0, tk.END)
         for col, dtype in self.logic.df.dtypes.items():
             self.list_types.insert(tk.END, f"{col} ---> {dtype}")
 
-        print("Veri başarıyla yüklendi, sütunlar kutulara doldu!")
+        print("Klasör içeriği (Veri/Görseller) başarıyla sisteme aktarıldı!")
         cols = list(self.logic.df.columns)
         self.combo_x['values'] = cols
         self.combo_y['values'] = cols
 
-        #---RENK SEÇİMİ---
         cat_cols = self.logic.get_categorical_columns()
-        self.combo_color['values']=cat_cols
+        self.combo_color['values'] = cat_cols
         self.combo_color.set("")
 
         if len(cat_cols) == 0:
@@ -1058,7 +1101,6 @@ class DataAnalyseGUI:
         else:
             self.combo_color.config(state="readonly")
 
-        #Sayısal Kolon Kontrolu
         numeric_cols = self.logic.get_numeric_columns()
         if len(numeric_cols) < 2:
             self.btn_scatter.config(state="disabled")
@@ -1067,9 +1109,7 @@ class DataAnalyseGUI:
 
         self.combo_stats_col['values'] = list(self.logic.df.columns)
         self.combo_stats_col.set("")
-
         self.combo_filter_col["values"] = list(self.logic.df.columns)
-
 
     def collect_patient_data(self):
         patient_data = {}
@@ -1635,7 +1675,8 @@ class DataAnalyseGUI:
             "cardiology": ("ui_cardiology", "CardiologyUI"),
             "neurology": ("ui_neurology", "NeurologyUI"),
             "internal_disease": ("ui_internal_disease", "InternalDiseaseUI"),
-            "anesthesia_icu": ("ui_anesthesia_icu", "AnesthesiaICUUI")
+            "anesthesia_icu": ("ui_anesthesia_icu", "AnesthesiaICUUI"),
+            "dermatology": ("ui_dermatology", "DermatologyUI")
         }
 
         if selected not in branch_map:
