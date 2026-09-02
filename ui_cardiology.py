@@ -1,14 +1,16 @@
 import tkinter as tk
 from tkinter import ttk
 import threading
+from tkinter import messagebox
 
 class CardiologyUI:
-    def __init__(self, root, logic, module,gui):
+    def __init__(self, root, logic, module, gui):
         self.root = root
         self.logic = logic
         self.current_module = module
         self.entries = {}
         self.gui = gui
+        self.next_row = 0
 
         self.root.title("Cardiology Module")
         self.root.geometry("1100x800")
@@ -25,31 +27,49 @@ class CardiologyUI:
         container.grid_columnconfigure(0, weight=1)
 
         canvas = tk.Canvas(container)
-        canvas.configure(height=1)
         canvas.grid(row=0, column=0, sticky="nsew")
-
-        canvas.grid_rowconfigure(0, weight=1)
-        canvas.grid_columnconfigure(0, weight=1)
-
 
         scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
         scrollbar.grid(row=0, column=1, sticky="ns")
         canvas.configure(yscrollcommand=scrollbar.set)
 
-        self.scroll_frame = tk.Frame(canvas)
+        self.scroll_frame = tk.Frame(canvas, bg="#f2f2f2")
         window_id = canvas.create_window((0, 0), window=self.scroll_frame, anchor="nw")
 
         self.root.configure(bg="#f2f2f2")
-        self.scroll_frame.configure(bg="#f2f2f2")
 
+        # --- DİNAMİK FARE TEKERLEĞİ (SCROLL) MANTIĞI ---
+        def _on_mousewheel(event):
+            if event.num == 4:
+                canvas.yview_scroll(-1, "units")
+            elif event.num == 5:
+                canvas.yview_scroll(1, "units")
+            else:
+                canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+        def _bind_mousewheel(e=None):
+            canvas.bind_all("<MouseWheel>", _on_mousewheel)
+            canvas.bind_all("<Button-4>", _on_mousewheel)
+            canvas.bind_all("<Button-5>", _on_mousewheel)
+
+        def _unbind_mousewheel(e=None):
+            canvas.unbind_all("<MouseWheel>")
+            canvas.unbind_all("<Button-4>")
+            canvas.unbind_all("<Button-5>")
+
+        canvas.bind("<Enter>", lambda e: (canvas.focus_set(), _bind_mousewheel()))
+        canvas.bind("<Leave>", _unbind_mousewheel)
+
+        # Başlık alanı
         title = tk.Label(
             self.scroll_frame,
-            text="Oncology Data Entry",
+            text="Cardiology Data Entry",
             font=("Segoe UI", 18, "bold"),
             fg="#aa0000",
             bg="#f2f2f2"
         )
-        title.grid(row=0, column=0, columnspan=2, pady=10)
+        title.grid(row=self.next_row, column=0, columnspan=2, pady=10)
+        self.next_row += 1
 
         def _on_frame_configure(event):
             canvas.configure(scrollregion=canvas.bbox("all"))
@@ -57,14 +77,10 @@ class CardiologyUI:
 
         self.scroll_frame.bind("<Configure>", _on_frame_configure)
 
-
-        def _on_mousewheel(event):
-            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-
-        canvas.bind_all("<MouseWheel>", _on_mousewheel)
-
+        # Dinamik giriş alanları
         self.create_dynamic_fields()
 
+        # AI Liste alanı
         self.list_frame = tk.LabelFrame(
             self.scroll_frame,
             text="AI Liste",
@@ -78,11 +94,9 @@ class CardiologyUI:
         )
         self.list_frame.grid(row=self.next_row, column=0, columnspan=2, sticky="nsew", pady=10)
 
-        # Frame grid ayarları
         self.list_frame.grid_rowconfigure(0, weight=1)
         self.list_frame.grid_columnconfigure(0, weight=1)
 
-        # --- MODERN SCROLLBAR STYLE ---
         style = ttk.Style()
         style.theme_use("clam")
 
@@ -94,7 +108,6 @@ class CardiologyUI:
             arrowcolor="#0055aa"
         )
 
-        # Satır seçme listesi (CSV satırlar için)
         self.list_rows = tk.Listbox(
             self.list_frame,
             font=("Segoe UI", 11),
@@ -114,8 +127,6 @@ class CardiologyUI:
         self.list_rows.bind("<Enter>", lambda e: e.widget.config(bg="#f7fbff"))
         self.list_rows.bind("<Leave>", lambda e: e.widget.config(bg="#ffffff"))
 
-
-        # Scrollbar
         scroll = ttk.Scrollbar(
             self.list_frame,
             orient="vertical",
@@ -123,13 +134,10 @@ class CardiologyUI:
             style="Vertical.TScrollbar"
         )
         scroll.grid(row=0, column=1, sticky="ns")
-
         self.list_rows.config(yscrollcommand=scroll.set)
 
-        # Satır seçme event
         self.list_rows.bind("<<ListboxSelect>>", self.on_row_selected)
         self.next_row += 1
-
 
         # --- AI ÇIKTI ALANI ---
         ai_label = tk.Label(
@@ -140,16 +148,10 @@ class CardiologyUI:
             bg="#f2f2f2"
         )
         ai_label.grid(row=self.next_row, column=0, columnspan=2, pady=(20, 5), sticky="w")
-
         self.next_row += 1
 
-        # --- STYLE (CSS benzeri) ---
-        style = ttk.Style()
-        style.theme_use("clam")
-
-        # Scrollbar stili
         style.configure(
-            "Vertical.TScrollbar",
+            "Dark.Vertical.TScrollbar",
             gripcount=0,
             background="#3A3A3A",
             darkcolor="#2E2E2E",
@@ -159,73 +161,53 @@ class CardiologyUI:
             arrowcolor="#D0D0D0"
         )
 
-        # Textbox stili (arka plan + yazı rengi)
         self.ai_textbox = tk.Text(
             self.scroll_frame,
             wrap="word",
             height=15,
             width=60,
-            bg="#1E1E1E",  # koyu arka plan
-            fg="#FF5555",  # açık yazı
-            insertbackground="#FFFFFF",  # imleç rengi
+            bg="#1E1E1E",
+            fg="#FFFFFF",
+            insertbackground="#FFFFFF",
             relief="flat",
             padx=10,
             pady=10
         )
         self.ai_textbox.grid(row=self.next_row, column=0, sticky="nsew")
-        self.ai_textbox.tag_config("error", foreground="#FF4444")
-        self.ai_textbox.tag_config("normal", foreground="#000000")
 
-        # Scrollbar
-        scroll = ttk.Scrollbar(
+        scroll_ai = ttk.Scrollbar(
             self.scroll_frame,
             orient="vertical",
             command=self.ai_textbox.yview,
-            style="Vertical.TScrollbar"
+            style="Dark.Vertical.TScrollbar"
         )
-        scroll.grid(row=self.next_row, column=1, sticky="ns")
+        scroll_ai.grid(row=self.next_row, column=1, sticky="ns")
+        self.ai_textbox.configure(yscrollcommand=scroll_ai.set)
 
-        # Textbox scroll bağlantısı
-        self.ai_textbox.configure(yscrollcommand=scroll.set)
+        # AI Textbox Fare Bağlantıları
+        self.ai_textbox.bind("<Enter>", lambda e: (_unbind_mousewheel(), e.widget.config(bg="#2A2A2A")))
+        self.ai_textbox.bind("<Leave>", lambda e: (_bind_mousewheel(), e.widget.config(bg="#1E1E1E")))
 
-        # Grid genişleme
+        self.ai_textbox.tag_config("title", font=("Segoe UI", 13, "bold"), foreground="#FF6666")
+        self.ai_textbox.tag_config("section", font=("Segoe UI", 12, "bold"), foreground="#66B2FF")
+        self.ai_textbox.tag_config("text", font=("Segoe UI", 11), foreground="#DDDDDD")
+        self.ai_textbox.tag_config("error", foreground="#FF4444")
+
         self.scroll_frame.rowconfigure(self.next_row, weight=1)
         self.scroll_frame.columnconfigure(0, weight=1)
-
         self.next_row += 1
-        # Hover efekti
-        self.ai_textbox.bind("<Enter>", lambda e: e.widget.config(bg="#f7fbff"))
-        self.ai_textbox.bind("<Leave>", lambda e: e.widget.config(bg="#ffffff"))
 
-        self.ai_textbox.tag_config("title", font=("Segoe UI", 13, "bold"), foreground="#aa0000")
-        self.ai_textbox.tag_config("section", font=("Segoe UI", 12, "bold"), foreground="#003366")
-        self.ai_textbox.tag_config("text", font=("Segoe UI", 11), foreground="#333333")
-
-        self.next_row += 1
-        style = ttk.Style()
-        style.theme_use("clam")
-
-        style.configure("TButton",
+        style.configure("AI.TButton",
                         font=("Segoe UI", 11, "bold"),
                         padding=6,
                         background="#0055aa",
                         foreground="white",
                         borderwidth=0)
 
-        style.map("TButton",
-                  background=[("active", "#0077cc")])
+        style.map("AI.TButton", background=[("active", "#0077cc")])
 
-        # AI analiz butonu
-        btn = ttk.Button(
-            self.scroll_frame,
-            text="Analiz Et",
-            style="AI.TButton",
-            command=self.run_analysis
-        )
-        btn.grid(row=self.next_row, column=0, columnspan=2, pady=15)
 
-        self.next_row += 1
-
+        # Risk Paneli
         self.risk_label = tk.Label(
             self.scroll_frame,
             text="Risk Skoru: -",
@@ -244,9 +226,42 @@ class CardiologyUI:
         self.risk_bar.grid(row=self.next_row, column=0, columnspan=2, pady=5)
         self.next_row += 1
 
+        # AI Analiz Butonu
+        btn = ttk.Button(
+            self.scroll_frame,
+            text="Analiz Et",
+            style="AI.TButton",
+            command=self.run_analysis
+        )
+        btn.grid(row=self.next_row, column=0, columnspan=2, pady=15)
 
-        # --- ALT BOŞLUK ---
-        tk.Frame(self.scroll_frame, height=50).grid(row=self.next_row,column=0)
+
+        # --- DİNAMİK YANIT BUTONU ---
+        self.origin_module = None  # Konsültasyonu gönderen modülü tutar (Örn: 'rheumatology')
+
+        self.btn_reply_consult = ttk.Button(
+            self.scroll_frame,
+            text="↩️ Konsültasyon Yanıtını Gönder",
+            command=self.send_dynamic_reply,
+            state="disabled"  # Konsültasyon gelene kadar pasif durur
+        )
+        self.btn_reply_consult.grid(row=self.next_row, column=1, columnspan=2, pady=10)
+        self.next_row += 1
+
+        # Alt Boşluk
+        tk.Frame(self.scroll_frame, height=50, bg="#f2f2f2").grid(row=self.next_row, column=0)
+
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+
+    def on_close(self):
+        try:
+            self.root.unbind_all("<MouseWheel>")
+            self.root.unbind_all("<Button-4>")
+            self.root.unbind_all("<Button-5>")
+        except Exception:
+            pass
+        self.root.destroy()
+
 
     def create_dynamic_fields(self):
         columns = list(self.logic.df.columns)
@@ -522,14 +537,45 @@ class CardiologyUI:
         value = min(max(score, 0), 200)
         self.risk_bar["value"] = value
 
+
+
     def on_ai_result(self, ai_output):
         self.ai_textbox.delete("1.0", "end")
 
-        if not ai_output or "AI hatası" in ai_output or ai_output.strip() == "":
-            self.ai_textbox.insert("end","AI cevap vermedi","error")
-            return
-        else:
-            self.ai_textbox.insert("end", ai_output,"normal")
+        import json
+        final_text = ""  # Değişkeni başta tanımlıyoruz ki NameError vermesin
+
+        # 1) Eğer string "AI hatası: Beklenmeyen yanıt yapısı:" ile başlıyorsa, JSON kısmını ayıkla
+        if isinstance(ai_output, str) and "Beklenmeyen yanıt yapısı:" in ai_output:
+            start = ai_output.find("{")
+            if start != -1:
+                ai_output = ai_output[start:]
+
+        try:
+            # 2) LM Studio chat.completion JSON'unu parse et
+            data = json.loads(ai_output)
+
+            # 3) Asıl içerik: message.content
+            content = data["choices"][0]["message"]["content"]
+
+            # 4) İçerik JSON string → tekrar parse et
+            try:
+                inner = json.loads(content)
+                klinik = inner.get("klinik_degerlendirme")
+                final_text = klinik if klinik else content
+            except Exception:
+                final_text = content
+
+        except Exception:
+            # Fallback: ham metni al
+            final_text = str(ai_output)
+
+        # 5) Metni Textbox'a yazdır
+        self.ai_textbox.insert("end", final_text)
+
+        # 6) --- DİNAMİK YANIT BUTONUNU AKTİFLEŞTİR ---
+        if hasattr(self, "btn_reply_consult"):
+            self.btn_reply_consult.config(state="normal")
 
     def ask_ai_async(self, prompt):
         print("ASK_AI_ASYNC çağrıldı")
@@ -564,3 +610,45 @@ class CardiologyUI:
         {bulgu_text}
         """
         return prompt
+
+    def set_incoming_consultation(self, consult_info):
+        """Gelen konsültasyona göre kaynak modülün anahtarını kaydeder."""
+        # Veri gelmese dahi varsayılan olarak 'rheumatology' atayarak çökmesini/boş kalmasını önlüyoruz
+        self.origin_module_key = consult_info.get("from_module_key") or consult_info.get("from_module",
+                                                                                         "rheumatology").lower()
+        origin_title = consult_info.get("from_module", "Rheumatology")
+
+        if hasattr(self, "btn_reply_consult"):
+            self.btn_reply_consult.config(
+                text=f"↩️ {origin_title}'ye Konsültasyon Yanıtını Gönder"
+            )
+
+    def send_dynamic_reply(self):
+        """Butona tıklandığında kaynak branşa yanıt gönderir."""
+        # origin_module_key yoksa fallback olarak 'rheumatology' kullan
+        target_key = getattr(self, "origin_module_key", "rheumatology")
+
+        ai_reply = self.ai_textbox.get("1.0", "end").strip()
+        if not ai_reply:
+            from tkinter import messagebox
+            messagebox.showwarning("Uyarı", "Gönderilecek bir değerlendirme metni bulunamadı.")
+            return
+
+        current_branch_name = self.__class__.__name__.replace("UI", "")
+
+        reply_data = {
+            "from_module": current_branch_name,
+            "from_module_key": current_branch_name.lower(),
+            "to_module": target_key,
+            "ai_summary": ai_reply
+        }
+
+        self.gui.active_consultation = reply_data
+
+        # İstek atan ana modülü (Romatoloji) tekrar aç ve ön plana getir
+        if hasattr(self.gui, "branch_var"):
+            self.gui.branch_var.set(target_key)
+            self.gui.on_branch_selected(None)
+
+        from tkinter import messagebox
+        messagebox.showinfo("Başarılı", "Değerlendirme notu ilgili branşa iletildi.")

@@ -22,6 +22,7 @@ from ui_neurology import NeurologyUI
 from ui_internal_disease import InternalDiseaseUI
 from ui_anesthesia_icu import AnesthesiaICUUI
 from ui_dermatology import DermatologyUI
+from ui_rheumatology import RheumatologyUI
 
 #---16 Branslık tam liste---
 
@@ -1009,6 +1010,7 @@ class DataAnalyseGUI:
         self.ai_text.config(yscrollcommand=scroll.set)
         tk.Frame(self.filter_frame, height=70).grid(row=8, column=0)
 
+
     def file_upload(self):
         # Kullanıcıya tek tek dosya seçtirmek yerine klasör seçtiriyoruz
         folder_path = filedialog.askdirectory(title="Veri Seti ve Görsellerin Bulunduğu Klasörü Seçin")
@@ -1060,7 +1062,7 @@ class DataAnalyseGUI:
             "neurology": getattr(self, "ui_neurology", None),
             "internal_disease": getattr(self, "ui_internal_disease", None),
             "anesthesia_icu": getattr(self, "ui_anesthesia_icu", None),
-            # "rheumatology": getattr(self, "ui_rheumatology", None) # İleride eklenecek
+            "rheumatology": getattr(self, "ui_rheumatology", None) # İleride eklenecek
         }
 
         for mod_name, ui_instance in modules_ui.items():
@@ -1661,61 +1663,81 @@ class DataAnalyseGUI:
 
             self.ask_ai_async(self.generate_full_summary())
 
-    def on_branch_selected(self,event):
-        print("Branş seçildi",self.branch_var.get())
+    def on_branch_selected(self, event):
+        print("Branş seçildi:", self.branch_var.get())
         selected = self.branch_var.get()
-        self.result_label.config(text=f"Seçilen Branş:{selected}")
+        self.result_label.config(text=f"Seçilen Branş: {selected}")
 
-        #Modul cek
         self.current_module = None
 
-        #---Brans Mapping(Branş adı,Modül adı,Sınıf adı)---
+        # --- Branş Mapping (Branş adı, Modül adı, Sınıf adı) ---
         branch_map = {
             "oncology": ("ui_oncology", "OncologyUI"),
             "cardiology": ("ui_cardiology", "CardiologyUI"),
             "neurology": ("ui_neurology", "NeurologyUI"),
             "internal_disease": ("ui_internal_disease", "InternalDiseaseUI"),
             "anesthesia_icu": ("ui_anesthesia_icu", "AnesthesiaICUUI"),
-            "dermatology": ("ui_dermatology", "DermatologyUI")
+            "dermatology": ("ui_dermatology", "DermatologyUI"),
+            "rheumatology": ("ui_rheumatology", "RheumatologyUI")
         }
 
         if selected not in branch_map:
             print("Bu branş için UI henüz oluşturulmadı")
             return
 
-        #--- Acik pencere kontrolu (Ayni pencere aciksa one getir)---
         attr_name = f"ui_{selected}"
-        if hasattr(self,attr_name):
-            existing_ui = getattr(self,attr_name)
-            if existing_ui and hasattr(existing_ui, "root") and existing_ui.root.winfo_exists:
+        branch_ui_instance = None  # Çökmesini önlemek için None olarak başlatıyoruz
+
+        # --- Açık pencere kontrolü (Aynı pencere açıksa öne getir) ---
+        if hasattr(self, attr_name):
+            existing_ui = getattr(self, attr_name)
+            if existing_ui and hasattr(existing_ui, "root") and existing_ui.root.winfo_exists():
                 existing_ui.root.lift()
                 existing_ui.root.focus_force()
-                return
+                branch_ui_instance = existing_ui
 
-        #---Dinamik yükleme ---
-        module_name,class_name = branch_map[selected]
+        # --- Dinamik yükleme (Pencere yoksa sıfırdan oluştur) ---
+        if branch_ui_instance is None:
+            module_name, class_name = branch_map[selected]
+            import importlib
+            module = importlib.import_module(module_name)
+            ui_class = getattr(module, class_name)
 
-        #Modülü ihtiyaç anında dinamik çağırıyoruz
-        import importlib
-        module = importlib.import_module(module_name)
-        ui_class = getattr(module,class_name)
+            new_window = tk.Toplevel(self.root)
+            branch_ui_instance = ui_class(new_window, self.logic, self.current_module, self)
+            setattr(self, attr_name, branch_ui_instance)
 
-        #Pencereyi ve UI sınıfnı tek noktadan olusturuyo
-        new_window = tk.Toplevel(self.root)
-        branch_ui_instance = ui_class(new_window,self.logic,self.current_module,self)
+        # --- Veri setini güncelle ---
+        if hasattr(self.logic, "df") and self.logic.df is not None:
+            branch_ui_instance.update_rows(self.logic.df)
 
-        #Nesneyi dinamik olarak değişkene atadım
-        setattr(self,attr_name,branch_ui_instance)
+        # --- KONSÜLTASYON VE DİNAMİK BUTON AKTARIMI (DOĞRU GİRİNTİ SEVİYESİ) ---
+        if hasattr(self, "active_consultation") and self.active_consultation:
+            consult_info = self.active_consultation
 
-       #---Veri  yükleme----
-        if hasattr(self.logic,"df") and self.logic.df is not None:
-            print("CSV zaten vardı -> update_rows çağrılıyor")
-        branch_ui_instance.update_rows(self.logic.df)
+            # 1. Eğer Romatoloji'ye yanıt dönüyorsa sentez metodunu çalıştır
+            if selected == "rheumatology" and hasattr(branch_ui_instance, "receive_consultation_reply"):
+                branch_ui_instance.receive_consultation_reply(consult_info)
 
+            # 2. Eğer alt branşlara (Kardiyoloji, Dermatoloji vb.) konsültasyon gidiyorsa
+            else:
+                # Pencere önceden açık da olsa yeni de açılsa gelen veriyi ve origin_module_key'i bildir
+                if hasattr(branch_ui_instance, "set_incoming_consultation"):
+                    branch_ui_instance.set_incoming_consultation(consult_info)
 
+                # AI metin kutusuna konsültasyon notunu düş
+                if hasattr(branch_ui_instance, "ai_textbox"):
+                    from_name = consult_info.get("from_module", "Rheumatology")
+                    summary = consult_info.get("ai_summary", "")
+                    summary_text = (
+                        f"--- KONSÜLTASYON NOTU ({from_name} -> {selected.upper()}) ---\n"
+                        f"{summary}\n"
+                        f"--------------------------------------------------\n\n"
+                    )
+                    branch_ui_instance.ai_textbox.insert("1.0", summary_text)
 
-
-
+            # Aktarım tamamlandıktan sonra konsültasyon paketini temizle
+            self.active_consultation = None
 
 if __name__ == "__main__":
     root = tk.Tk()

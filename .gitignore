@@ -10,5 +10,6 @@ __pycache__/
 
 # Veri ve sanal çevre klasörleri (varsa)
 venv/
+.venv/
 env/
 *.log

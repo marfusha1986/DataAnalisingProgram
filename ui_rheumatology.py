@@ -6,7 +6,7 @@ import seaborn as sns
 import re
 
 
-class DermatologyUI:
+class RheumatologyUI:
 
     def __init__(self, root, logic, module, gui):
         self.root = root
@@ -16,7 +16,7 @@ class DermatologyUI:
         self.gui = gui
         self.next_row = 0
 
-        self.root.title("Dermatology Module")
+        self.root.title("Rheumatology Module")
         self.root.geometry("1100x800")
         self.root.lift()
         self.root.focus_force()
@@ -54,7 +54,7 @@ class DermatologyUI:
 
         title = tk.Label(
                 self.scroll_frame,
-                text="Dermatology Data Entry",
+                text="Rheumatology Data Entry",
                 font=("Segoe UI", 18, "bold"),
                 fg="#aa0000",
                 bg="#f2f2f2"
@@ -201,17 +201,62 @@ class DermatologyUI:
         )
         btn.grid(row=self.next_row, column=0, columnspan=2, pady=15)
 
-
-
-        # ESKİ BUTON YERİNE BUNDAN KOYUYORUZ:
-        self.btn_reply_consult = ttk.Button(
-            self.scroll_frame,
-            text="↩️ Rheumatology'ye Konsültasyon Yanıtını Gönder",
-            command=self.send_dynamic_reply,
-            state="disabled"  # Konsültasyon gelene kadar tıklanamaz
-        )
-        self.btn_reply_consult.grid(row=self.next_row, column=1, columnspan=2, pady=10)
         self.next_row += 1
+
+        # --- KONSÜLTASYON VE SEVK PANELSİ ---
+        self.consult_frame = tk.LabelFrame(
+            self.scroll_frame,
+            text=" 🏥 Konsültasyon & Branş Sevk Paneli ",
+            font=("Segoe UI", 12, "bold"),
+            fg="#0055aa",
+            bg="#f2f2f2",
+            bd=2,
+            relief="groove",
+            padx=10,
+            pady=10
+        )
+        self.consult_frame.grid(row=self.next_row, column=0, columnspan=2, sticky="nsew", pady=15)
+        self.next_row += 1
+
+        # Konsültasyon Durum Etiketi
+        self.lbl_consult_status = tk.Label(
+            self.consult_frame,
+            text="Konsültasyon İhtiyacı: Analiz bekleniyor...",
+            font=("Segoe UI", 10, "italic"),
+            bg="#f2f2f2",
+            fg="#555555"
+        )
+        self.lbl_consult_status.pack(anchor="w", pady=(0, 5))
+
+        # Önerilen Branşlar için Checkbox / Listbox alanı
+        self.consult_checks = {}
+        consult_branches = [
+            ("Cardiology", "Kardiyoloji (Tutulum / EKG / EKO)"),
+            ("Nephrology", "Nefroloji (Böbrek Tutulumu / Proteinüri)"),
+            ("Endocrinology", "Endokrinoloji (Glikokortikoid / Metabolizma)"),
+            ("Dermatology", "Dermatoloji (Cilt Lezyonları / Biyopsi)")
+        ]
+
+        for code, name in consult_branches:
+            var = tk.BooleanVar()
+            chk = tk.Checkbutton(
+                self.consult_frame,
+                text=name,
+                variable=var,
+                font=("Segoe UI", 10),
+                bg="#f2f2f2",
+                activebackground="#f2f2f2"
+            )
+            chk.pack(anchor="w")
+            self.consult_checks[code] = var
+
+        # Konsültasyon Notu Gönderme Butonu
+        btn_send_consult = ttk.Button(
+            self.consult_frame,
+            text="Seçili Branşlara Konsültasyon Talebi Oluştur",
+            command=self.send_consultation
+        )
+        btn_send_consult.pack(anchor="e", pady=(10, 0))
 
         # --- ALT BOŞLUK ---
         tk.Frame(self.scroll_frame, height=50,bg="#f2f2f2").grid(row=self.next_row, column=0)
@@ -226,9 +271,6 @@ class DermatologyUI:
         except Exception:
             pass
         self.root.destroy()
-
-
-
 
     def build_row_list(self):
         style = ttk.Style()
@@ -532,12 +574,11 @@ class DermatologyUI:
             lines.append(f"{col_name}: {value}")
         return "\n".join(lines)
 
-
     def on_ai_result(self, ai_output):
         self.ai_textbox.delete("1.0", "end")
 
         import json
-
+        final_text = ""
         # 1) Eğer string "AI hatası: Beklenmeyen yanıt yapısı:" ile başlıyorsa, JSON kısmını ayıkla
         if isinstance(ai_output, str) and "Beklenmeyen yanıt yapısı:" in ai_output:
             # İlk '{' karakterinden sonrasını al
@@ -553,24 +594,75 @@ class DermatologyUI:
             content = data["choices"][0]["message"]["content"]
 
             # 4) İçerik JSON string → tekrar parse et
-            inner = json.loads(content)
-
-            # 5) Sadece klinik_degerlendirme metnini al
-            klinik = inner.get("klinik_degerlendirme")
-
-            if klinik:
-                self.ai_textbox.insert("end", klinik)
-            else:
-                self.ai_textbox.insert("end", content)
+            try:
+                inner = json.loads(content)
+                klinik = inner.get("klinik_degerlendirme")
+                final_text = klinik if klinik else content
+            except Exception:
+                final_text = content
 
         except Exception:
-            # Fallback: ham metni yaz
-            self.ai_textbox.insert("end", str(ai_output))
+            # Fallback: ham metni al
+            final_text = str(ai_output)
 
-        # 6) --- DİNAMİK YANIT BUTONUNU AKTİFLEŞTİR ---
-        # AI analizi tamamlandığında konsültasyon yanıt butonunu tıklanabilir yap
-        if hasattr(self, "btn_reply_consult"):
-            self.btn_reply_consult.config(state="normal")
+        # 5) Metni temizle ve Textbox'a yazdır
+        # (Metin sonundaki ANSI escape karakterlerini ve yabancı kelimeleri temizleyelim)
+        if hasattr(self, "clean_ai_text"):
+            final_text = self.clean_ai_text(final_text)
+
+        self.ai_textbox.insert("end", final_text)
+        # 6) --- OTOMATİK KONSÜLTASYON TESPİTİ ---
+        # AI metni basıldıktan hemen sonra metni tarayıp konsültasyonları seçtiriyoruz
+        if hasattr(self, "auto_detect_consultations"):
+            self.auto_detect_consultations(final_text)
+
+    def auto_detect_consultations(self, ai_text):
+        text_lower = ai_text.lower()
+
+        # 1. Önceki seçimleri temizle (Sıfırla)
+        for code, var in self.consult_checks.items():
+            var.set(False)
+
+        detected_any = False
+
+        # 2. Anahtar kelimelere göre konsültasyon kutucuklarını işaretle
+        if any(k in text_lower for k in ["nefroloji", "böbrek", "kreatinin", "proteinüri"]):
+            self.consult_checks["Nephrology"].set(True)
+            detected_any = True
+
+        if any(k in text_lower for k in ["kardiyoloji", "kalp", "perikardit", "ekg", "hipertansiyon"]):
+            self.consult_checks["Cardiology"].set(True)
+            detected_any = True
+
+        if any(k in text_lower for k in ["endokrin", "steroid", "şeker", "diyabet", "tiroid"]):
+            self.consult_checks["Endocrinology"].set(True)
+            detected_any = True
+
+        if any(k in text_lower for k in ["dermatoloji", "döküntü", "rash", "kelebek", "cilt"]):
+            self.consult_checks["Dermatology"].set(True)
+            detected_any = True
+
+        # 3. Durum etiketini güncelle
+        if detected_any:
+            self.lbl_consult_status.config(
+                text="⚠️ AI Analizine Göre Olası Konsültasyon İhtiyaçları İşaretlendi!",
+                fg="#cc0000"
+            )
+        else:
+            self.lbl_consult_status.config(
+                    text="İnceleme Tamamlandı: Ek konsültasyon ihtiyacı tespit edilmedi.",
+                    fg="#008800"
+            )
+
+    def clean_ai_text(self, text):
+        import re
+        # ANSI terminal renk/silme kodlarını temizle (\x1b...)
+        ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+        cleaned = ansi_escape.sub('', text)
+        # Portekizce 'Não' kelimesini 'Yok' ile değiştir
+        cleaned = re.sub(r'\bNão\b', 'Yok', cleaned, flags=re.IGNORECASE)
+        return cleaned
+
 
     def ask_ai_async(self, prompt):
         print("ASK_AI_ASYNC çağrıldı")
@@ -589,32 +681,6 @@ class DermatologyUI:
         thread = threading.Thread(target=worker, daemon=True).start()
         print("THREAD başlatıldı")
 
-    def build_clinical_prompt(self, row):
-        text = (
-            "Aşağıda bir dermatoloji hastasının klinik ve görsel veri bilgileri verilmiştir.\n"
-            "Lütfen verileri dikkatle analiz ederek klinik bir değerlendirme yaz.\n"
-            "Tüm yanıtı strictly Türkçe olarak ver.\n"
-            "Hiçbir yabancı kelime kullanma.\n\n"
-            "Hastaya Ait Veriler:\n"
-        )
-
-        for col in row.index:
-            val = str(row[col])
-            # Eğer veri resim dosyasıysa modele bunu görsel kanıt olarak belirt
-            if any(val.lower().endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.webp']):
-                text += f"- {col}: {val} (Bu bölgeye ait fotoğraf kaydı mevcut)\n"
-            else:
-                text += f"- {col}: {val}\n"
-
-        text += (
-            "\nNot: 'type' kolonu hastadaki tanıyı/lezyon türünü gösterir.\n"
-            "Lütfen bu bilgilere göre gerçekçi bir Türkçe klinik değerlendirme yap:\n"
-            "- Lezyon Tipi ve Teşhis Değerlendirmesi\n"
-            "- Etkilenen Bölgeler\n"
-            "- Klinik Yorum ve Tedavi/Takip Önerileri\n"
-        )
-
-        return text
 
     def update_ai_output(self, row):
         bulgular = "\n".join([f"- {col}: {row[col]}" for col in row.index])
@@ -660,7 +726,7 @@ class DermatologyUI:
         result = self.logic.ask_ai(prompt)
         self.ai_textbox.insert("end", f"\n\n🧠 Dahiliye Klinik Analiz:\n{result}")
 
-    def clean_ai_text(text):
+    def clean_ai_text(self,text):
         # ANSI escape dizilerini temizle
         ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
         cleaned = ansi_escape.sub('', text)
@@ -668,44 +734,95 @@ class DermatologyUI:
         cleaned = re.sub(r'\bNão\b', 'Yok', cleaned, flags=re.IGNORECASE)
         return cleaned
 
-    def set_incoming_consultation(self, consult_info):
-        """Gelen konsültasyona göre kaynak modülün anahtarını kaydeder."""
-        # Veri gelmese dahi varsayılan olarak 'rheumatology' atayarak çökmesini/boş kalmasını önlüyoruz
-        self.origin_module_key = consult_info.get("from_module_key") or consult_info.get("from_module",
-                                                                                         "rheumatology").lower()
-        origin_title = consult_info.get("from_module", "Rheumatology")
-
-        if hasattr(self, "btn_reply_consult"):
-            self.btn_reply_consult.config(
-                text=f"↩️ {origin_title}'ye Konsültasyon Yanıtını Gönder"
-            )
-
-    def send_dynamic_reply(self):
-        """Butona tıklandığında kaynak branşa yanıt gönderir."""
-        # origin_module_key yoksa fallback olarak 'rheumatology' kullan
-        target_key = getattr(self, "origin_module_key", "rheumatology")
-
-        ai_reply = self.ai_textbox.get("1.0", "end").strip()
-        if not ai_reply:
-            from tkinter import messagebox
-            messagebox.showwarning("Uyarı", "Gönderilecek bir değerlendirme metni bulunamadı.")
-            return
-
-        current_branch_name = self.__class__.__name__.replace("UI", "")
-
-        reply_data = {
-            "from_module": current_branch_name,
-            "from_module_key": current_branch_name.lower(),
-            "to_module": target_key,
-            "ai_summary": ai_reply
+    def send_consultation(self):
+        branch_mapping = {
+            "Nephrology": "internal_disease",
+            "Cardiology": "cardiology",
+            "Endocrinology": "internal_disease",
+            "Dermatology": "dermatology"
         }
 
-        self.gui.active_consultation = reply_data
+        selected_targets = []
+        for code, var in self.consult_checks.items():
+            if var.get():
+                target_branch = branch_mapping.get(code, code.lower())
+                selected_targets.append((code, target_branch))
 
-        # İstek atan ana modülü (Romatoloji) tekrar aç ve ön plana getir
-        if hasattr(self.gui, "branch_var"):
-            self.gui.branch_var.set(target_key)
-            self.gui.on_branch_selected(None)
+        if not selected_targets:
+            from tkinter import messagebox
+            messagebox.showwarning("Uyarı", "Lütfen en az bir konsültasyon branşı seçin!")
+            return
+
+        # KONSÜLTASYON PAKETİ (Kaynak bilgileri eksiksiz eklendi)
+        consult_data = {
+            "patient_row": getattr(self, "selected_row_index", None),
+            "ai_summary": self.ai_textbox.get("1.0", "end").strip(),
+            "from_module": "Rheumatology",
+            "from_module_key": "rheumatology"
+        }
+
+        # Ana GUI'ye paketi kaydet
+        self.gui.active_consultation = consult_data
+
+        opened_branches = []
+        for display_name, branch_key in selected_targets:
+            if hasattr(self.gui, "branch_var"):
+                self.gui.branch_var.set(branch_key)
+                self.gui.on_branch_selected(None)
+                opened_branches.append(display_name)
 
         from tkinter import messagebox
-        messagebox.showinfo("Başarılı", "Değerlendirme notu ilgili branşa iletildi.")
+        messagebox.showinfo(
+            "Konsültasyon Gönderildi",
+            f"Seçilen branşlara ({', '.join(opened_branches)}) konsültasyon notu başarıyla iletildi."
+        )
+
+    def receive_consultation_reply(self, reply_info):
+        from_mod = reply_info.get("from_module", "Kardiyoloji")
+        summary = reply_info.get("ai_summary", "")
+
+        # 1. Gelen konsültasyon notunu hafızaya al
+        self.cardiology_consult_note = summary
+
+        # 2. Arayüzde durumu güncelle (Kullanıcıya bilgi ver)
+        if hasattr(self, "lbl_consult_status"):
+            self.lbl_consult_status.config(
+                text=f"✅ {from_mod} Konsültasyon Notu Alındı! Bütüncül analiz için 'Analiz Et' butonuna basabilirsiniz.",
+                fg="#008800"
+            )
+
+        if "Cardiology" in self.consult_checks:
+            self.consult_checks["Cardiology"].set(True)
+
+    def build_clinical_prompt(self, row):
+        text = (
+            "Aşağıda bir Romatoloji hastasının klinik verileri ve alınan branş konsültasyonu yer almaktadır.\n"
+            "Lütfen tüm verileri birlikte değerlendirerek bütüncül bir Romatoloji Raporu oluştur.\n"
+            "Tüm yanıtı Türkçe olarak ver.\n\n"
+            "--- HASTA MEVCUT BULGULARI ---\n"
+        )
+
+        for col in row.index:
+            val = str(row[col])
+            if any(val.lower().endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.webp']):
+                text += f"- {col}: {val} (Görsel Kaydı Var)\n"
+            else:
+                text += f"- {col}: {val}\n"
+
+        # Konsültasyon notu varsa prompta ekle
+        if hasattr(self, "cardiology_consult_note") and self.cardiology_consult_note:
+            text += (
+                "\n--- ALINAN KARDİYOLOJİ KONSÜLTASYON NOTU ---\n"
+                f"{self.cardiology_consult_note}\n"
+                "--------------------------------------------------\n"
+            )
+
+        text += (
+            "\nLütfen Kardiyoloji görüşünü ve hastanın verilerini birlikte ele alarak:\n"
+            "1. Bütüncül Romatolojik Ön Tanı ve Otoimmün Tutulum Analizi\n"
+            "2. Kardiyovasküler Bulguların Tedaviye ve İlaç Seçimine Etkisi\n"
+            "3. Nihai Tedavi, İlaç Ayarlamaları ve Takip Planı\n"
+            "başlıkları altında SON ÇIKTI raporunu üret.\n"
+        )
+
+        return text
